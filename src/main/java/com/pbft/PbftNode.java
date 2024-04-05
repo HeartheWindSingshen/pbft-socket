@@ -24,6 +24,7 @@ public class PbftNode {
     private String ip;
     private int port;
     private boolean isGood;
+    private boolean viewChanging=false;
     //所有集群节点信息
     private List<Node>NodeList=new ArrayList<Node>();
     //prepare记录投票
@@ -104,6 +105,7 @@ public class PbftNode {
 
             switch(message.getType()){
                 case Constant.REQUEST:
+                    if(!viewChanging)
                     onRequest(message);
                     break;
                 case Constant.PRE_PREPARE:
@@ -119,7 +121,13 @@ public class PbftNode {
                     onReply(message);
                     break;
                 case Constant.CHANGEVIEW:
-                    onClientViewChange(message);
+                    if(!viewChanging){
+                        /**
+                         * 上viewChanging锁
+                         */
+                        viewChanging=true;
+                        onClientViewChange(message);
+                    }
                     break;
                 case Constant.VIEWCHANGE:
                     onNodeViewChange(message);
@@ -131,6 +139,7 @@ public class PbftNode {
                     onNewView(message);
                     break;
                 case Constant.GETVIEW:
+                    if(!viewChanging)
                     onGetView(message);
                 default:
                     break;
@@ -264,7 +273,7 @@ public class PbftNode {
         replyVote(msgNumber,msgValue);
         Map<String, Integer> voteValue = replyVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
-        System.out.println(replyVoteList);
+//        System.out.println(replyVoteList);
         for (String voteKey : voteKeySet) {
             Integer count = voteValue.get(voteKey);
             int maxf=(NodeList.size())/3;
@@ -359,6 +368,10 @@ public class PbftNode {
     private void onNewView(Message message) {
         this.view=message.getView();
         System.out.println("各节点接收到new view");
+        /**
+         * 解开viewChanging锁
+         */
+        viewChanging=true;
     }
     private void onGetView(Message message) throws IOException {
         if(node>=0){
