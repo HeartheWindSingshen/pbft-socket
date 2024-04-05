@@ -60,12 +60,14 @@ public class pbftMain {
 
                 String value = scanner.next();
                 while(!pbftNode.getQueue().isEmpty()){
-                    System.out.println("hahaha");
+                    System.out.println("重发节点开始");
                     Message messageTop = pbftNode.getQueue().poll();
                     int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
                     messageTop.setToNode(mainIndex);
                     messageTop.setTime(LocalDateTime.now());
                     messageTop.setView(pbftNode.getView());
+                    //重复发送（重传）消息之前，先清空自己记录
+                    pbftNode.getReplyVoteList().remove(messageTop.getNumber());
                     sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
                     System.out.println("序号为"+messageTop.getNumber()+"的消息重发成功！！！");
                 }

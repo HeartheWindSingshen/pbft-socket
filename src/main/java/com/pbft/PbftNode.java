@@ -146,6 +146,12 @@ public class PbftNode {
 //        根据朝代计算主节点
         int mainNode=view%(NodeList.size());
         if(message.getToNode()==mainNode){
+            int msgNumber = message.getNumber();
+            String msgValue = message.getValue();
+            /**
+             * 如果重发的话，先清除各个节点的上次信息的投票记录,此处只针对 主节点
+             */
+            ClearPrepareCommitReplyVoteDefendMain(msgNumber);
             //client向主节点发送请求情况
             //发送广播
             sendAllNodes(message,Constant.PRE_PREPARE);
@@ -153,8 +159,6 @@ public class PbftNode {
             //自己向自己发送，实际是修改prepareVoteList数值
             //这部分相当于主节点在pre-prepare发送时候已经在prepare投票了，所以要都提前添加值,
             //此时是只投了自己,其余人要在他们的节点线程中处理，我放在了pre-prepare函数里面
-            int msgNumber = message.getNumber();
-            String msgValue = message.getValue();
             requestSendToSelf(msgNumber,msgValue);
 
 
@@ -171,9 +175,11 @@ public class PbftNode {
         int msgNumber = message.getNumber();
         String msgValue = message.getValue();
         /**
-         * 如果重发的话，先清除各个节点的上次信息的投票记录
+         * 如果重发的话，先清除各个节点的上次信息的投票记录,此处只针对非主节点
          */
-        ClearPrepareCommitReplyVoteDefend(msgNumber);
+        ClearPrepareCommitReplyVoteDefendOther(msgNumber);
+        //因为ClearPrepareCommitReplyVoteDefend删除了onRequest传入的
+//        requestSendToSelf(msgNumber,msgValue);
         requestSendToSelf(msgNumber,msgValue);
         sendAllNodes(message,Constant.PREPARE);
         System.out.println("prepare阶段节点广播..............");
@@ -223,6 +229,7 @@ public class PbftNode {
         if(defendVoteList.contains("commit"+message.getNumber())){
             return;
         }
+//        System.out.println(commitVoteList);
         int msgNumber = message.getNumber();
         String msgValue = message.getValue();
         /**
@@ -252,12 +259,12 @@ public class PbftNode {
         if(defendVoteList.contains("reply"+message.getNumber())){
             return;
         }
-
         int msgNumber = message.getNumber();
         String msgValue = message.getValue();
         replyVote(msgNumber,msgValue);
         Map<String, Integer> voteValue = replyVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
+        System.out.println(replyVoteList);
         for (String voteKey : voteKeySet) {
             Integer count = voteValue.get(voteKey);
             int maxf=(NodeList.size())/3;
@@ -617,13 +624,25 @@ public class PbftNode {
         }
     }
 
-    public void ClearPrepareCommitReplyVoteDefend(Integer number){
-        prepareVoteList.remove(number);
-        commitVoteList.remove(number);
-        replyVoteList.remove(number);
-        defendVoteList.remove("prepare"+number);
-        defendVoteList.remove("commit"+number);
-        defendVoteList.remove("reply"+number);
+    public void ClearPrepareCommitReplyVoteDefendOther(Integer number){
+        if(this.node!=(view%NodeList.size())){
+            prepareVoteList.remove(number);
+            commitVoteList.remove(number);
+            replyVoteList.remove(number);
+            defendVoteList.remove("prepare"+number);
+            defendVoteList.remove("commit"+number);
+            defendVoteList.remove("reply"+number);
+        }
+    }
+    private void ClearPrepareCommitReplyVoteDefendMain(int number) {
+        if(this.node==(view%NodeList.size())){
+            prepareVoteList.remove(number);
+            commitVoteList.remove(number);
+            replyVoteList.remove(number);
+            defendVoteList.remove("prepare"+number);
+            defendVoteList.remove("commit"+number);
+            defendVoteList.remove("reply"+number);
+        }
     }
     /**
      * 导入本地节点存储的其他节点信息
