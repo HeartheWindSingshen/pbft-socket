@@ -65,7 +65,7 @@ public class pbftMain {
 //                }
 //            }).start();
 
-            Scanner scanner = new Scanner(System.in);
+//            Scanner scanner = new Scanner(System.in);
 //            while (true) {
 //                String value = scanner.next();
 //                    Message msgClient = new Message();
@@ -105,13 +105,14 @@ public class pbftMain {
                 msgClient.setClientIp(pbftNode.getIp());
                 msgClient.setClientPort(pbftNode.getPort());
                 int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
+                System.out.println("*********************发送hello"+ii);
                 sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(), pbftNode.getNodeList().get(mainIndex).getPort(), msgClient);
                 //因为这个序列号，发送了自动++，所以才使用序列号-1
                 timeTaskUtil.addTimeTask(Varible.number - 1, pbftNode, msgClient);
                 //主要用于当主节点作恶时候，reply阶段判断返回共识消息是否是共识消息
                 pbftNode.getMessageValueCheckList().put(msgClient.getNumber(), value);
+                Thread.sleep(2000);
             }
-            Thread.sleep(3000);
             System.out.println(pbftNode.getQueue());
 
         }

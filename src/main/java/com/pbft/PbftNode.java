@@ -360,6 +360,10 @@ public class PbftNode {
             if(voteNumber>=2*((NodeList.size())/3)){
                 message.setValue("新朝代来了！");
                 sendAllNodes(message,Constant.NEWVIEW);
+                /**
+                 * 解开viewChanging锁
+                 */
+                viewChanging=false;
                 defendVoteList.add("viewChangeAck"+message.getNumber());
 
             }
@@ -371,7 +375,7 @@ public class PbftNode {
         /**
          * 解开viewChanging锁
          */
-        viewChanging=true;
+        viewChanging=false;
     }
     private void onGetView(Message message) throws IOException {
         if(node>=0){
