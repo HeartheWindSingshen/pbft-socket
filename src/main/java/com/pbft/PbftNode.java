@@ -26,6 +26,7 @@ public class PbftNode {
     private boolean isGood;
     //主节点作恶 判断client 收到reply消息是否是原来的初始消息  只针对于client使用该成员变量
     private String orgClientMessageValue;
+    //所有集群节点信息
     private List<Node>NodeList=new ArrayList<Node>();
     //prepare记录投票
     private Map<Integer, Map<String,Integer>>prepareVoteList=new HashMap<>();
@@ -136,7 +137,7 @@ public class PbftNode {
 
     private void onRequest(Message message) throws IOException {
 //        根据朝代计算主节点
-        int mainNode=view%(NodeList.size()+1);
+        int mainNode=view%(NodeList.size());
         if(message.getToNode()==mainNode){
             //client向主节点发送请求情况
             //发送广播
@@ -190,7 +191,7 @@ public class PbftNode {
             Integer voteNumber = voteValue.get(voteKey);
             //prepare投票判断
             //2*((NodeList.size()+1)/3)+1
-            if(voteNumber>=2*((NodeList.size()+1)/3)+1){
+            if(voteNumber>=2*((NodeList.size())/3)+1){
                 sendAllNodes(message,Constant.COMMIT);
                 System.out.println("commit阶段主节点广播..............");
                 ///////////////////////////
@@ -223,7 +224,7 @@ public class PbftNode {
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
             //2*((NodeList.size()+1)/3)+1
-            if(voteNumber>=2*((NodeList.size()+1)/3)+1){
+            if(voteNumber>=2*((NodeList.size())/3)+1){
                 replyClient(message,Constant.REPLY);
                 System.out.println("本节点发送reply");
                 defendVoteList.add("commit"+message.getNumber());
@@ -248,7 +249,7 @@ public class PbftNode {
         Set<String> voteKeySet = voteValue.keySet();
         for (String voteKey : voteKeySet) {
             Integer count = voteValue.get(voteKey);
-            int maxf=(NodeList.size()+1)/3;
+            int maxf=(NodeList.size())/3;
             if(count>=maxf+1&&voteKey==this.orgClientMessageValue){
                 timeTaskUtil.cancelTimeTask(msgNumber);
                 System.out.println("Client "+node+"接收到共识reply，共识完成！");
@@ -284,12 +285,13 @@ public class PbftNode {
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
             //2*((NodeList.size()+1)/3)+1
-            if(voteNumber>=2*((NodeList.size()+1)/3)+1){
-                Node nodekernal = NodeList.get(view % (NodeList.size() + 1));
-                if(nodekernal!=null){
+            if(voteNumber>=2*((NodeList.size())/3)+1){
+                Node nodekernal = NodeList.get(view % (NodeList.size()));
+                //因为onViewChangeAck的voteNumber>=2*((NodeList.size())/3，所以不需要自己给自己发
+                if(nodekernal.getNode()!=this.node){
                     Message messageSend = new Message();
                     messageSend.setOrgNode(node);
-                    messageSend.setToNode(view % (NodeList.size() + 1));
+                    messageSend.setToNode(view % (NodeList.size()));
                     messageSend.setType(Constant.VIEWCHANGEACK);
                     messageSend.setTime(LocalDateTime.now());
                     messageSend.setNumber(msgNumber);
@@ -303,14 +305,11 @@ public class PbftNode {
                         messageSend.setValue("坏节点的错误信息");
                         System.out.println("主节点在view-change-ack作恶，我们模拟就让它随便发了");
                         Random random = new Random();
-                        int i = random.nextInt(NodeList.size());
+                        int i = random.nextInt(NodeList.size()+1);
                         Node nodeTo = NodeList.get(i);
 
                         sendUtil.sendNode(nodeTo.getIp(),nodeTo.getPort(),messageSend);
                     };
-                }else{
-                    //自己是核心节点，什么也不做
-                    System.out.println("hahaha");
                 }
                 defendVoteList.add("viewChange"+message.getNumber());
 
@@ -329,7 +328,7 @@ public class PbftNode {
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
             //2*((NodeList.size()+1)/3)   //这个前一层没给自己传 自己是主节点
-            if(voteNumber>=2*((NodeList.size()+1)/3)){
+            if(voteNumber>=2*((NodeList.size())/3)){
                 message.setValue("新朝代来了！");
                 sendAllNodes(message,Constant.NEWVIEW);
                 defendVoteList.add("viewChangeAck"+message.getNumber());
@@ -354,6 +353,11 @@ public class PbftNode {
         String msgValue= message.getValue();
         int number = message.getNumber();
         for (Node nodeElse : NodeList) {
+            if(nodeElse.getNode()==this.node){
+                //跳过自己广播
+                System.out.println("跳过自己广播");
+                continue;
+            }
             Message messageSend = new Message();
             messageSend.setOrgNode(this.node);
             //根据记录表中数据，发送去向节点编号
@@ -598,10 +602,10 @@ public class PbftNode {
             int nodeElse= (int) object.get("node");
             String ipElse=(String)object.get("ip");
             int portElse=(int)object.get("port");
-            // 已删除  还是将包括本节点放到nodeList里面吧，后面广播时候也会广播到本节点，之后如果有其他要求不需要本节点，加if语句就可以
-            if(nodeElse!=this.node){
+            // 还是将包括本节点放到nodeList里面吧，后面广播时候也会广播到本节点，之后如果有其他要求不需要本节点，加if语句就可以
+//            if(nodeElse!=this.node){
                 NodeList.add(new Node(nodeElse,ipElse,portElse));
-            }
+//            }
         }
     }
 }
