@@ -59,7 +59,7 @@ public class timeTaskUtil {
             }
         };
         Timer timer=new Timer();
-        timer.schedule(timeoutTask,5000);
+        timer.schedule(timeoutTask,2000);
         //加入Map
         timerMapList.put(Messagenumber,timer);
         timeroutTaskMapList.put(Messagenumber,timeoutTask);

@@ -170,6 +170,10 @@ public class PbftNode {
         //相当于主节点再pre-prepare阶段就已经投了，prepare的票了
         int msgNumber = message.getNumber();
         String msgValue = message.getValue();
+        /**
+         * 如果重发的话，先清除各个节点的上次信息的投票记录
+         */
+        ClearPrepareCommitReplyVoteDefend(msgNumber);
         requestSendToSelf(msgNumber,msgValue);
         sendAllNodes(message,Constant.PREPARE);
         System.out.println("prepare阶段节点广播..............");
@@ -613,6 +617,14 @@ public class PbftNode {
         }
     }
 
+    public void ClearPrepareCommitReplyVoteDefend(Integer number){
+        prepareVoteList.remove(number);
+        commitVoteList.remove(number);
+        replyVoteList.remove(number);
+        defendVoteList.remove("prepare"+number);
+        defendVoteList.remove("commit"+number);
+        defendVoteList.remove("reply"+number);
+    }
     /**
      * 导入本地节点存储的其他节点信息
      * @throws FileNotFoundException
