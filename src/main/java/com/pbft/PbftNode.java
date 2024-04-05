@@ -24,8 +24,6 @@ public class PbftNode {
     private String ip;
     private int port;
     private boolean isGood;
-    //主节点作恶 判断client 收到reply消息是否是原来的初始消息  只针对于client使用该成员变量
-    private String orgClientMessageValue;
     //所有集群节点信息
     private List<Node>NodeList=new ArrayList<Node>();
     //prepare记录投票
@@ -38,9 +36,14 @@ public class PbftNode {
     private Map<Integer,Map<String,Integer>>ViewChangeVoteList=new HashMap<>();
     //view-change-ack记录投票   和reply相似
     private Map<Integer,Map<String,Integer>>ViewChangeAckVoteList=new HashMap<>();
+    //client发送各个序列号信息的值，用于进行最后的回复检验
+    //主节点作恶 判断client 收到reply消息是否是原来的初始消息  只针对于client使用该成员变量
+    private Map<Integer,String>MessageValueCheckList=new HashMap<>();
     //记录在prepare和commit函数内部已经发送的对应COMMIT和REPLY，防止当票数达到界限值就发送，之后的票来，就不能再去操作了，否则会重复发送，故设置这两个变量，控制
     //里面记录 prepare1或者commit1或者reply或者viewChange或者viewChangeAck 请求来当对应函数接收到请求后，直接忽略，因为已经投票成功了
     private Set<String>defendVoteList=new HashSet<>();
+    //需要重发的消息队列
+    public volatile Queue<Message> queue = new ArrayDeque<>();
 
     public PbftNode(int node, String ip, int port,boolean isGood) throws FileNotFoundException {
         this.node = node;
@@ -126,12 +129,16 @@ public class PbftNode {
                     break;
                 case Constant.NEWVIEW:
                     onNewView(message);
+                    break;
+                case Constant.GETVIEW:
+                    onGetView(message);
                 default:
                     break;
             }
         }
 
     }
+
 
 
 
@@ -250,7 +257,9 @@ public class PbftNode {
         for (String voteKey : voteKeySet) {
             Integer count = voteValue.get(voteKey);
             int maxf=(NodeList.size())/3;
-            if(count>=maxf+1&&voteKey==this.orgClientMessageValue){
+            //&&voteKey==this.orgClientMessageValue
+            //这里不知道为啥只能用equals  voteKey.equals(this.orgClientMessageValue)
+            if(count>=maxf+1&&(voteKey.equals(this.getMessageValueCheckList().get(msgNumber)))){
                 timeTaskUtil.cancelTimeTask(msgNumber);
                 System.out.println("Client "+node+"接收到共识reply，共识完成！");
                 defendVoteList.add("reply"+message.getNumber());
@@ -305,7 +314,7 @@ public class PbftNode {
                         messageSend.setValue("坏节点的错误信息");
                         System.out.println("主节点在view-change-ack作恶，我们模拟就让它随便发了");
                         Random random = new Random();
-                        int i = random.nextInt(NodeList.size()+1);
+                        int i = random.nextInt(NodeList.size());
                         Node nodeTo = NodeList.get(i);
 
                         sendUtil.sendNode(nodeTo.getIp(),nodeTo.getPort(),messageSend);
@@ -339,6 +348,22 @@ public class PbftNode {
     private void onNewView(Message message) {
         this.view=message.getView();
         System.out.println("各节点接收到new view");
+    }
+    private void onGetView(Message message) throws IOException {
+        if(node>=0){
+            //集群节点收到client请求信息
+            message.setView(this.view);
+            message.setTime(LocalDateTime.now());
+            //这个很有意思 先得到消息来源client，之后再设置toNode为此
+            message.setToNode(message.getOrgNode());
+            message.setOrgNode(this.node);
+            sendUtil.sendNode(message.getClientIp(),message.getClientPort(),message);
+            System.out.println("集群节点返回了view");
+        }else{
+            //client收到返回的view消息
+            this.view=message.getView();
+            System.out.println("client收到返回的view："+this.view);
+        }
     }
 
 

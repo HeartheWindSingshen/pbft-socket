@@ -4,13 +4,14 @@ import com.pbft.Utils.sendUtil;
 import com.pbft.Utils.timeTaskUtil;
 import com.pbft.constant.Constant;
 import com.pbft.constant.Varible;
+import com.pbft.pojo.Node;
+import org.w3c.dom.NodeList;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
+
 public class pbftMain {
 
     public static void main(String[] args) throws IOException {
@@ -26,25 +27,79 @@ public class pbftMain {
         PbftNode pbftNode = new PbftNode(-1, "127.0.0.1", 9000,true);
         pbftNode.start();
         if(pbftNode.getNode()==-1){
+            //请求view
+            Message msgClientQuest = new Message();
+            msgClientQuest.setClientPort(pbftNode.getPort());
+            msgClientQuest.setClientIp(pbftNode.getIp());
+            msgClientQuest.setType(Constant.GETVIEW);
+            msgClientQuest.setNumber(Varible.number++);
+            msgClientQuest.setValue("请求获得集群的view");
+            msgClientQuest.setOrgNode(pbftNode.getNode());
+            Random random = new Random();
+            List<Node> listNode = pbftNode.getNodeList();
+            int i = random.nextInt(listNode.size());
+            msgClientQuest.setToNode(listNode.get(i).getNode());
+            sendUtil.sendNode(listNode.get(i).getIp(),listNode.get(i).getPort(),msgClientQuest);
+
+            //开启client重发线程
+
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    while (true) {
+//
+//                        if(!pbftNode.getQueue().isEmpty()){
+//                            System.out.println("hahaha");
+//                            try {
+//                                Thread.sleep(4000);
+//                            } catch (InterruptedException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                            Message messageTop = pbftNode.getQueue().poll();
+//                            int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
+//                            messageTop.setToNode(mainIndex);
+//                            messageTop.setTime(LocalDateTime.now());
+//                            messageTop.setView(pbftNode.getView());
+//                            try {
+//                                sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
+//                               //有点问题
+////                                timeTaskUtil.addTimeTask(messageTop.getNumber(),pbftNode,messageTop);
+//
+//                            } catch (IOException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                            System.out.println("序号为"+messageTop.getNumber()+"的消息重发成功！！！");
+//                        }
+//                        //这种要等第二次输入时候才会运行上面while循环，是因为到String value = scanner.next();卡住了
+//                        //当我队列pbftNode.getQueue()不空时候，想着能快速的进入里面while然后快速弄完队列的任务，但是问题在于我原本的空队列加入数据时候，线程已经阻塞到next（）语句上，只有执行完输入线程才会重新走到上面，清空队列的任务，并且我想让队列任务比之后输入任务更前。
+//                        //使用多线程已经解决
+//                    }
+//                }
+//            }).start();
+
+            //输入
             Scanner scanner = new Scanner(System.in);
             while(true){
+
                 String value = scanner.next();
                 Message msgClient = new Message();
                 msgClient.setType(Constant.REQUEST);
-                msgClient.setToNode(0);
+                msgClient.setToNode(pbftNode.getView()%pbftNode.getNodeList().size());
                 msgClient.setTime(LocalDateTime.now());
-                msgClient.setOrgNode(-1);
+                msgClient.setOrgNode(pbftNode.getNode());
                 msgClient.setNumber(Varible.number++);
-                msgClient.setView(1);
+                msgClient.setView(pbftNode.getView());
+                msgClient.setTime(LocalDateTime.now());
                 msgClient.setValue(value);
                 //只在消息上弄客户端ip，端口
                 msgClient.setClientIp(pbftNode.getIp());
                 msgClient.setClientPort(pbftNode.getPort());
-                sendUtil.sendNode("127.0.0.1",9001,msgClient);
+                int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
+                sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),msgClient);
                 //因为这个序列号，发送了自动++，所以才使用序列号-1
-                timeTaskUtil.addTimeTask(Varible.number-1,pbftNode);
+                timeTaskUtil.addTimeTask(Varible.number-1,pbftNode,msgClient);
                 //主要用于当主节点作恶时候，reply阶段判断返回共识消息是否是共识消息
-                pbftNode.setOrgClientMessageValue(value);
+                pbftNode.getMessageValueCheckList().put(msgClient.getNumber(),value);
             }
         }
 

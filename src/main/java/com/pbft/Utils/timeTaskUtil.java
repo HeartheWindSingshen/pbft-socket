@@ -22,7 +22,7 @@ import java.util.TimerTask;
 public class timeTaskUtil {
     public static Map<Integer,Timer>timerMapList=new HashMap<>();
     public static Map<Integer,TimerTask>timeroutTaskMapList=new HashMap<>();
-    public static void addTimeTask(int Messagenumber, PbftNode node){
+    public static void addTimeTask(int Messagenumber, PbftNode node,Message message){
         //原来普通消息请求的编号
         System.out.println("启动消息编号"+Messagenumber+"超时判断");
         TimerTask timeoutTask=new TimerTask() {
@@ -30,6 +30,8 @@ public class timeTaskUtil {
             public void run() {
 //                System.out.println("卡住了，消息"+number+"要太阳系广播了");
                 //广播view-change
+                node.getQueue().offer(message);
+                System.out.println("超时队列为 "+node.getQueue());
                 int msgNumber = Varible.number++;
                 for (Node nodeElse : node.getNodeList()) {
                     Message message = new Message();
@@ -46,13 +48,14 @@ public class timeTaskUtil {
                     String ipSend = nodeElse.getIp();
                     int portSend = nodeElse.getPort();
                     try {
-                        if(nodeElse.getNode()!=0)
+                        if(nodeElse.getNode()!=(node.getView()%node.getNodeList().size()))
                         sendUtil.sendNode(ipSend,portSend,message);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                    //TODO 估计要重发之前的消息，但是不太符合pbft
+                    //TODOFinished 估计要重发之前的消息，因为之前消息client没有收到是吧,还要修改进行视图变更之后我的client的view值++
                 }
+                node.setView(node.getView()+1);
             }
         };
         Timer timer=new Timer();
