@@ -44,6 +44,7 @@ public class PbftNode {
     //里面记录 prepare1或者commit1或者reply或者viewChange或者viewChangeAck 请求来当对应函数接收到请求后，直接忽略，因为已经投票成功了
     private Set<String>defendVoteList=new HashSet<>();
     //需要重发的消息队列
+    //只针对于client节点有这个
     public volatile Queue<Message> queue = new ArrayDeque<>();
 
     public PbftNode(int node, String ip, int port,boolean isGood) throws FileNotFoundException {
@@ -281,7 +282,7 @@ public class PbftNode {
             //这里不知道为啥只能用equals  voteKey.equals(this.orgClientMessageValue)
             if(count>=maxf+1&&(voteKey.equals(this.getMessageValueCheckList().get(msgNumber)))){
                 timeTaskUtil.cancelTimeTask(msgNumber);
-                System.out.println("Client "+node+"接收到共识reply，共识完成！");
+                System.out.println("Client "+node+"接收到共识reply，共识完成！共实现息为"+message.getValue());
                 defendVoteList.add("reply"+message.getNumber());
             }
         }

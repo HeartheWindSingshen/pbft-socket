@@ -43,27 +43,27 @@ public class pbftMain {
             sendUtil.sendNode(listNode.get(i).getIp(), listNode.get(i).getPort(), msgClientQuest);
 
             //使用线程专门处理重发消息
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    while(!pbftNode.getQueue().isEmpty()){
-//                        System.out.println("重发节点开始");
-//                        Message messageTop = pbftNode.getQueue().poll();
-//                        int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
-//                        messageTop.setToNode(mainIndex);
-//                        messageTop.setTime(LocalDateTime.now());
-//                        messageTop.setView(pbftNode.getView());
-//                        //重复发送（重传）消息之前，先清空自己记录
-//                        pbftNode.getReplyVoteList().remove(messageTop.getNumber());
-//                        try {
-//                            sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
-//                        } catch (IOException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//                        System.out.println("序号为"+messageTop.getNumber()+"的消息重发成功！！！");
-//                    }
-//                }
-//            }).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while(!pbftNode.getQueue().isEmpty()){
+                        System.out.println("重发节点开始");
+                        Message messageTop = pbftNode.getQueue().poll();
+                        int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
+                        messageTop.setToNode(mainIndex);
+                        messageTop.setTime(LocalDateTime.now());
+                        messageTop.setView(pbftNode.getView());
+                        //重复发送（重传）消息之前，先清空自己记录
+                        pbftNode.getReplyVoteList().remove(messageTop.getNumber());
+                        try {
+                            sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        System.out.println("序号为"+messageTop.getNumber()+"的消息重发开始！！！");
+                    }
+                }
+            }).start();
 
 //            Scanner scanner = new Scanner(System.in);
 //            while (true) {
@@ -111,7 +111,7 @@ public class pbftMain {
                 timeTaskUtil.addTimeTask(Varible.number - 1, pbftNode, msgClient);
                 //主要用于当主节点作恶时候，reply阶段判断返回共识消息是否是共识消息
                 pbftNode.getMessageValueCheckList().put(msgClient.getNumber(), value);
-                Thread.sleep(2000);
+                Thread.sleep(3000);
             }
             System.out.println(pbftNode.getQueue());
 
