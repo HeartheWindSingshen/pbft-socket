@@ -49,7 +49,7 @@ public class pbftMain {
                     while(true){
                         while(!pbftNode.getQueue().isEmpty()){
                             try {
-                                Thread.sleep(2000);
+                                Thread.sleep(20);
                             } catch (InterruptedException e) {
                                 throw new RuntimeException(e);
                             }
@@ -62,9 +62,10 @@ public class pbftMain {
                             //重复发送（重传）消息之前，先清空自己记录
                             pbftNode.getReplyVoteList().remove(messageTop.getNumber());
                             try {
+
                                 sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
 //                                //重发继续加定时 TODO
-//                                timeTaskUtil.addTimeTask(messageTop.getNumber(), pbftNode, messageTop);
+                                timeTaskUtil.addTimeTask(messageTop.getNumber(), pbftNode, messageTop,false);
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
@@ -98,8 +99,8 @@ public class pbftMain {
 
 //                }
 
-
-            for (int ii=0;ii<3;ii++){
+//            共识完成！
+            for (int ii=0;ii<12;ii++){
                 String value="hello"+ii;
                 Message msgClient = new Message();
                 msgClient.setType(Constant.REQUEST);
@@ -117,10 +118,10 @@ public class pbftMain {
                 System.out.println("*********************发送hello"+ii);
                 sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(), pbftNode.getNodeList().get(mainIndex).getPort(), msgClient);
                 //因为这个序列号，发送了自动++，所以才使用序列号-1
-                timeTaskUtil.addTimeTask(Varible.number - 1, pbftNode, msgClient);
+                timeTaskUtil.addTimeTask(Varible.number - 1, pbftNode, msgClient,true);
                 //主要用于当主节点作恶时候，reply阶段判断返回共识消息是否是共识消息
                 pbftNode.getMessageValueCheckList().put(msgClient.getNumber(), value);
-                Thread.sleep(3000);
+//                Thread.sleep(50);
             }
             System.out.println(pbftNode.getQueue());
 

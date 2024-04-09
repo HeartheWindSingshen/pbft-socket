@@ -14,6 +14,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import com.pbft.Utils.sendUtil;
 import com.pbft.constant.Constant;
 
@@ -45,7 +47,7 @@ public class PbftNode {
     private Set<String>defendVoteList=new HashSet<>();
     //需要重发的消息队列
     //只针对于client节点有这个
-    public volatile Queue<Message> queue = new ArrayDeque<>();
+    public volatile ConcurrentLinkedQueue<Message> queue = new ConcurrentLinkedQueue<>();
     //commit阶段 来对消息进行排序，标记消息已发送位置，从而实现消息顺序发送
     public Map<Integer,Message>commitSortMessageResponse=new HashMap<>();
     //对应将要按顺序发送的发送的消息序号
@@ -181,6 +183,7 @@ public class PbftNode {
 
         }else{
             //client向非主节点发送请求情况
+            System.out.println("haaaaaaaaaaaa");
         }
 
     }
@@ -383,6 +386,10 @@ public class PbftNode {
             if(voteNumber>=2*((NodeList.size())/3)){
                 message.setValue("新朝代来了！");
                 sendAllNodes(message,Constant.NEWVIEW);
+                //顺带给client说说当前view
+                message.setType(Constant.NEWVIEW);
+                sendUtil.sendNode(message.getClientIp(),message.getClientPort(),message);
+                System.out.println("给client发送了啊");
                 /**
                  * 解开viewChanging锁
                  */
@@ -393,12 +400,19 @@ public class PbftNode {
         }
     }
     private void onNewView(Message message) {
-        this.view=message.getView();
-        System.out.println("各节点接收到new view");
-        /**
-         * 解开viewChanging锁
-         */
-        viewChanging=false;
+        if(node>=0){
+            //集群节点
+            this.view=message.getView();
+            System.out.println("各节点接收到new view");
+            /**
+             * 解开viewChanging锁
+             */
+            viewChanging=false;
+        }else{
+            //client
+            this.view=message.getView();
+            System.out.println("client接收到新的view");
+        }
     }
     private void onGetView(Message message) throws IOException {
         if(node>=0){

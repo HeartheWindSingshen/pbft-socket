@@ -22,7 +22,7 @@ import java.util.TimerTask;
 public class timeTaskUtil {
     public static Map<Integer,Timer>timerMapList=new HashMap<>();
     public static Map<Integer,TimerTask>timeroutTaskMapList=new HashMap<>();
-    public static void addTimeTask(int Messagenumber, PbftNode node,Message message){
+    public static void addTimeTask(int Messagenumber, PbftNode node,Message message,Boolean first){
         //原来普通消息请求的编号
         System.out.println("启动消息编号"+Messagenumber+"超时判断");
         TimerTask timeoutTask=new TimerTask() {
@@ -30,36 +30,43 @@ public class timeTaskUtil {
             public void run() {
 //                System.out.println("卡住了，消息"+number+"要太阳系广播了");
                 //广播view-change
-                node.getQueue().offer(message);
-                System.out.println("超时队列为 "+node.getQueue());
-                int msgNumber = Constant.CLIENTVIEWCHANGE;
-                for (Node nodeElse : node.getNodeList()) {
-                    Message message = new Message();
-                    message.setOrgNode(node.getNode());
-                    message.setToNode(nodeElse.getNode());
-                    message.setClientIp(node.getIp());
-                    message.setClientPort(node.getPort());
-                    //将客户端发送消息的序号，剥离到Varible类中
-                    message.setNumber(msgNumber);
-                    message.setType(Constant.CHANGEVIEW);
-                    message.setValue("要进行View-change了！");
-                    message.setTime(LocalDateTime.now());
+                if(first){
+                    node.getQueue().offer(message);
+                    System.out.println("超时队列为 "+node.getQueue());
+                    int msgNumber = Constant.CLIENTVIEWCHANGE;
+                    for (Node nodeElse : node.getNodeList()) {
+                        Message message = new Message();
+                        message.setOrgNode(node.getNode());
+                        message.setToNode(nodeElse.getNode());
+                        message.setClientIp(node.getIp());
+                        message.setClientPort(node.getPort());
+                        //将客户端发送消息的序号，剥离到Varible类中
+                        message.setNumber(msgNumber);
+                        message.setType(Constant.CHANGEVIEW);
+                        message.setValue("要进行View-change了！");
+                        message.setTime(LocalDateTime.now());
 
-                    String ipSend = nodeElse.getIp();
-                    int portSend = nodeElse.getPort();
-                    try {
-                        if(nodeElse.getNode()!=(node.getView()%node.getNodeList().size()))
-                        sendUtil.sendNode(ipSend,portSend,message);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        String ipSend = nodeElse.getIp();
+                        int portSend = nodeElse.getPort();
+                        try {
+                            if(nodeElse.getNode()!=(node.getView()%node.getNodeList().size()))
+                                sendUtil.sendNode(ipSend,portSend,message);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        //TODOFinished 估计要重发之前的消息，因为之前消息client没有收到是吧,还要修改进行视图变更之后我的client的view值++
                     }
-                    //TODOFinished 估计要重发之前的消息，因为之前消息client没有收到是吧,还要修改进行视图变更之后我的client的view值++
+                    //本来是设置client的view，但是重传的太多了，反而导致view过度增加了，我准备每次重传先访问获取view吧
+//                    node.setView(node.getView()+1);
+                }else{
+                    node.getQueue().offer(message);
+                    System.out.println("重传超时队列为 "+node.getQueue());
                 }
-                node.setView(node.getView()+1);
+
             }
         };
         Timer timer=new Timer();
-        timer.schedule(timeoutTask,2000);
+        timer.schedule(timeoutTask,100);
         //加入Map
         timerMapList.put(Messagenumber,timer);
         timeroutTaskMapList.put(Messagenumber,timeoutTask);
