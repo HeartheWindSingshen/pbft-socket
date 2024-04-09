@@ -46,7 +46,10 @@ public class PbftNode {
     //需要重发的消息队列
     //只针对于client节点有这个
     public volatile Queue<Message> queue = new ArrayDeque<>();
-
+    //commit阶段 来对消息进行排序，标记消息已发送位置，从而实现消息顺序发送
+    public Map<Integer,Message>commitSortMessageResponse=new HashMap<>();
+    //对应将要按顺序发送的发送的消息序号
+    public Integer WillreplySuccessIndex=0;
     public PbftNode(int node, String ip, int port,boolean isGood) throws FileNotFoundException {
         this.node = node;
         this.ip = ip;
@@ -142,13 +145,17 @@ public class PbftNode {
                 case Constant.GETVIEW:
                     if(!viewChanging)
                     onGetView(message);
+                    break;
+                case Constant.REPLYSUCCESSUPDATE:
+                    //应该zhiyouview change结束才能发送成功
+                    onReplySuccessUpdate(message);
+                    break;
                 default:
                     break;
             }
         }
 
     }
-
 
 
 
@@ -253,9 +260,18 @@ public class PbftNode {
             Integer voteNumber = voteValue.get(voteKey);
             //2*((NodeList.size()+1)/3)+1
             if(voteNumber>=2*((NodeList.size())/3)+1){
-                replyClient(message,Constant.REPLY);
-                System.out.println("本节点发送reply");
-                defendVoteList.add("commit"+message.getNumber());
+                if (msgNumber==WillreplySuccessIndex){
+                    replyClient(message,Constant.REPLY);
+                    System.out.println("本节点发送reply");
+                    defendVoteList.add("commit"+message.getNumber());
+                }else{
+                    commitSortMessageResponse.put(msgNumber,message);
+                    System.out.println("本节点预备发送reply，等待中&&&&&&");
+                    defendVoteList.add("commit"+message.getNumber());
+                }
+//                replyClient(message,Constant.REPLY);
+//                System.out.println("本节点发送reply");
+//                defendVoteList.add("commit"+message.getNumber());
 
             }
         }
@@ -264,7 +280,7 @@ public class PbftNode {
 
 
     //这部分是客户端独有的经历到
-    private void onReply(Message message) {
+    private void onReply(Message message) throws IOException {
         //已经票数够了，发送了，后面就不要操作了
         if(defendVoteList.contains("reply"+message.getNumber())){
             return;
@@ -283,6 +299,12 @@ public class PbftNode {
             if(count>=maxf+1&&(voteKey.equals(this.getMessageValueCheckList().get(msgNumber)))){
                 timeTaskUtil.cancelTimeTask(msgNumber);
                 System.out.println("Client "+node+"接收到共识reply，共识完成！共实现息为"+message.getValue());
+                Message messageReplySuccess = new Message();
+                messageReplySuccess.setTime(LocalDateTime.now());
+                messageReplySuccess.setOrgNode(node);
+                messageReplySuccess.setNumber(message.getNumber());
+                messageReplySuccess.setValue("Client接收成功 特此广播，请修改WillreplySuccessIndex");
+                sendAllNodes(messageReplySuccess,Constant.REPLYSUCCESSUPDATE);
                 defendVoteList.add("reply"+message.getNumber());
             }
         }
@@ -394,7 +416,15 @@ public class PbftNode {
             System.out.println("client收到返回的view："+this.view);
         }
     }
+    private void onReplySuccessUpdate(Message message) throws IOException {
+        WillreplySuccessIndex=message.getNumber()+1;
+        if(commitSortMessageResponse.containsKey(WillreplySuccessIndex)){
+            replyClient(commitSortMessageResponse.get(WillreplySuccessIndex),Constant.REPLY);
+            commitSortMessageResponse.remove(WillreplySuccessIndex);
+            System.out.println("本节点发送reply  这是按顺序将之前暂缓的发送&&&&&&&&&&&&&&");
+        }
 
+    }
 
 
     /**

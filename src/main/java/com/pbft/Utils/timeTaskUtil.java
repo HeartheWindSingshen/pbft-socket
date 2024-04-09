@@ -32,7 +32,7 @@ public class timeTaskUtil {
                 //广播view-change
                 node.getQueue().offer(message);
                 System.out.println("超时队列为 "+node.getQueue());
-                int msgNumber = Varible.number++;
+                int msgNumber = Constant.CLIENTVIEWCHANGE;
                 for (Node nodeElse : node.getNodeList()) {
                     Message message = new Message();
                     message.setOrgNode(node.getNode());

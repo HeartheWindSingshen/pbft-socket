@@ -32,7 +32,7 @@ public class pbftMain {
             msgClientQuest.setClientPort(pbftNode.getPort());
             msgClientQuest.setClientIp(pbftNode.getIp());
             msgClientQuest.setType(Constant.GETVIEW);
-            msgClientQuest.setNumber(Varible.number++);
+            msgClientQuest.setNumber(Constant.CLIENTGETVIEW);
             msgClientQuest.setValue("请求获得集群的view");
             msgClientQuest.setOrgNode(pbftNode.getNode());
 
@@ -46,23 +46,32 @@ public class pbftMain {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    while(!pbftNode.getQueue().isEmpty()){
-                        System.out.println("重发节点开始");
-                        Message messageTop = pbftNode.getQueue().poll();
-                        int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
-                        messageTop.setToNode(mainIndex);
-                        messageTop.setTime(LocalDateTime.now());
-                        messageTop.setView(pbftNode.getView());
-                        //重复发送（重传）消息之前，先清空自己记录
-                        pbftNode.getReplyVoteList().remove(messageTop.getNumber());
-                        try {
-                            sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
+                    while(true){
+                        while(!pbftNode.getQueue().isEmpty()){
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                            System.out.println("重发节点开始");
+                            Message messageTop = pbftNode.getQueue().poll();
+                            int mainIndex = pbftNode.getView() % pbftNode.getNodeList().size();
+                            messageTop.setToNode(mainIndex);
+                            messageTop.setTime(LocalDateTime.now());
+                            messageTop.setView(pbftNode.getView());
+                            //重复发送（重传）消息之前，先清空自己记录
+                            pbftNode.getReplyVoteList().remove(messageTop.getNumber());
+                            try {
+                                sendUtil.sendNode(pbftNode.getNodeList().get(mainIndex).getIp(),pbftNode.getNodeList().get(mainIndex).getPort(),messageTop);
+//                                //重发继续加定时 TODO
+//                                timeTaskUtil.addTimeTask(messageTop.getNumber(), pbftNode, messageTop);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            System.out.println("序号为"+messageTop.getNumber()+"的消息重发开始！！！");
                         }
-                        System.out.println("序号为"+messageTop.getNumber()+"的消息重发开始！！！");
                     }
-                }
+                    }
             }).start();
 
 //            Scanner scanner = new Scanner(System.in);
@@ -117,6 +126,6 @@ public class pbftMain {
 
         }
 
-
+        Thread.sleep(10000);
         }
 }
