@@ -100,7 +100,7 @@ public class pbftMain {
 //                }
 
 //            共识完成！
-            for (int ii=0;ii<120;ii++){
+            for (int ii=0;ii<20;ii++){
                 String value="hello"+ii;
                 Message msgClient = new Message();
                 msgClient.setType(Constant.REQUEST);
