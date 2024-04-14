@@ -1,13 +1,12 @@
-package com.pbft.Utils;
+package coms.pbft.Utils;
 
 import com.alibaba.fastjson.JSON;
+import coms.pbft.Message;
+import coms.pbft.constant.Constant;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-
-import  com.pbft.constant.Constant;
-import com.pbft.Message;
 
 
 public class sendUtil {
