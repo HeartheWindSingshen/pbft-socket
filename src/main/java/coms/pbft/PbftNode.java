@@ -10,10 +10,7 @@ import coms.pbft.Utils.timePositionTask;
 import coms.pbft.Utils.timeTaskUtil;
 import coms.pbft.constant.Constant;
 import coms.pbft.constant.Varible;
-import coms.pbft.pojo.Field;
-import coms.pbft.pojo.Node;
-import coms.pbft.pojo.Position;
-import coms.pbft.pojo.Status;
+import coms.pbft.pojo.*;
 import coms.pbft.target.Target1;
 import coms.pbft.time.TestLongSend;
 import lombok.Data;
@@ -193,7 +190,7 @@ public class PbftNode {
         prepareVote(msgNumber,msgValue);
         Map<String, Integer> voteValue = prepareVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
-//        System.out.println(prepareVoteList);
+//        System.out.println(prepareVoteList);、
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
             //prepare投票判断
@@ -240,8 +237,21 @@ public class PbftNode {
                     this.setY(position.getY());
                     //这个只针对我们移动位置了，然后target目标看到了触发的
                     System.out.println(Target1.NodeList);
-                    Target1.NodeList.get(this.getNode()).setX(position.getX());
-                    Target1.NodeList.get(this.getNode()).setY(position.getY());
+                    /**
+                     * 由于是不同的main运行的，所以targetMain跑的代码对NodeList维护，我的pbftNodeMain是没有的，我的仍然是原来的NodeList
+                     * 也就是空，我考虑让无人机移动一次就给target发信息来达到模拟目标，定时搜索时候也是一样
+                     */
+//                    Target1.NodeList.get(this.getNode()).setX(position.getX());
+//                    Target1.NodeList.get(this.getNode()).setY(position.getY());
+                    Message messagetoTarget1 = new Message();
+                    messagetoTarget1.setOriOrgNode(this.getNode());
+                    messagetoTarget1.setOrgNode(this.getNode());
+                    messagetoTarget1.setToNode(-2);
+                    messagetoTarget1.setTime(LocalDateTime.now());
+                    //实际就是将接收到的移动位置坐标，自己移动setX,Y之后，将其发送给target1,作用类似找到目标
+                    messagetoTarget1.setValue(message.getValue());
+                    sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
+
                 }
                 if(message.getControllerType()==Constant.OPERATION4){
                     //根据控制台发出的消息 开启无人机搜索
@@ -272,9 +282,17 @@ public class PbftNode {
                 }
                 if(message.getControllerType()==Constant.FLYFINDSHARE){
                     //当发现有无人机找到目标，立即修改位置前往，找到目标的无人机旁边
+                    System.out.println("飞翔");
                     if(message.getOriOrgNode()!=this.getNode()){
-                        this.setX(this.getNodeList().get(message.getOriOrgNode()).getX());
-                        this.setY(this.getNodeList().get(message.getOriOrgNode()).getY());
+                        String value = message.getValue();
+                        Position ShareNodePosition = JSON.parseObject(value, Position.class);
+                        this.setX(ShareNodePosition.getX());
+                        this.setY(ShareNodePosition.getY());
+                        System.out.println("飞翔成功");
+                        System.out.println("更新后坐标"+this.getX()+" "+this.getY());
+                        //显示找不到定时任务可以加个if语句
+                        if(timePositionTask.timerMapList.get(this.getNode())!=null&&timePositionTask.timeroutTaskMapList.get(this.getNode())!=null)
+                        timePositionTask.cancelTimeTask(this);
                     }
                 }
                 replyClient(message,Constant.REPLY);
@@ -304,16 +322,21 @@ public class PbftNode {
     }
     private void onFind(Message message) {
         System.out.println(this.getNode()+" 找到目标拉！！！！");
-        String value="节点"+this.node+":我找到目标了！！！快来";
+//        String value="节点"+this.node+":我找到目标了！！！快来";
+        Position position = new Position(this.getX(), this.getY());
+        String value = JSON.toJSONString(position);
+        timePositionTask.cancelTimeTask(this);
         Message msgClient = new Message();
         msgClient.setOriOrgNode(this.getNode());
         msgClient.setControllerType(Constant.FLYFINDSHARE);
         msgClient.setType(Constant.REQUEST);
-        //TODO
         msgClient.setToNode(0);
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
-        msgClient.setNumber(Varible.number++);
+        //TODO 这个序号和控制台的序号不通用，所以之前造成过bug(在prepare阶段序号是0会被防住的)，所以我想弄个随机负数,
+        Random random = new Random();
+        int iii = random.nextInt(100000) + 1;
+        msgClient.setNumber(-1*iii);
         msgClient.setView(this.getView());
         msgClient.setValue(value);
         //只在消息上弄客户端ip，端口

@@ -125,6 +125,7 @@ public class ControllerCentre {
                 }
             }
         }else{
+//            System.out.println(message.getType());
             String status = message.getValue();
             Status flyStatus = JSON.parseObject(status, Status.class);
             Node nodeFly = NodeList.get(message.getOrgNode());
