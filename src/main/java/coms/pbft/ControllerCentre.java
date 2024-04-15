@@ -285,6 +285,7 @@ public class ControllerCentre {
     }
     //开启无人机内部共享位置！！！
     public void Operation6(){
+
         System.out.println("执行6 开启无人机内部共享位置！！！");
         String value="开启无人机内部共享位置";
         Message msgClient = new Message();
