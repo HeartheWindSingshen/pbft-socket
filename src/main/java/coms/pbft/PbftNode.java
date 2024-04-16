@@ -105,7 +105,7 @@ public class PbftNode {
 
             switch(message.getType()){
                 case Constant.REQUEST:
-                        onRequest(message);
+                    onRequest(message);
                     break;
                 case Constant.PRE_PREPARE:
                     onPrePrepare(message);
@@ -134,7 +134,12 @@ public class PbftNode {
         int mainNode=view%(NodeList.size());
         if(message.getToNode()==mainNode){
             int msgNumber = message.getNumber();
-            String msgValue = message.getValue();
+            String msgValue;
+            if(isGood){
+                msgValue = message.getValue();
+            }else{
+                msgValue = "坏节点的错误信息";
+            }
             /**
              * 如果重发的话，先清除各个节点的上次信息的投票记录,此处只针对 主节点
              */
@@ -147,7 +152,7 @@ public class PbftNode {
             //这部分相当于主节点在pre-prepare发送时候已经在prepare投票了，所以要都提前添加值,
             //此时是只投了自己,其余人要在他们的节点线程中处理，我放在了pre-prepare函数里面
             requestSendToSelf(msgNumber,msgValue);
-
+            System.out.println("request发完主节点自己投自己一票"+prepareVoteList);
 
         }else{
             //client向非主节点发送请求情况
@@ -160,20 +165,27 @@ public class PbftNode {
     private void onPrePrepare(Message message) throws IOException {
         //相当于主节点再pre-prepare阶段就已经投了，prepare的票了
         int msgNumber = message.getNumber();
-        String msgValue = message.getValue();
+        String msgValue=message.getValue();
+        //别人发的在判断isgood之前，用原来别人发的messagevalue
+        requestSendToSelf(msgNumber,msgValue);
+        if(isGood){
+            msgValue = message.getValue();
+        }else{
+            msgValue = "坏节点的错误信息";
+        }
         /**
          * 如果重发的话，先清除各个节点的上次信息的投票记录,此处只针对非主节点
          */
 //        ClearPrepareCommitReplyVoteDefendOther(msgNumber);
         //因为ClearPrepareCommitReplyVoteDefend删除了onRequest传入的
 //        requestSendToSelf(msgNumber,msgValue);
-        requestSendToSelf(msgNumber,msgValue);
         sendAllNodes(message,Constant.PREPARE);
         System.out.println("prepare阶段节点广播..............");
         //自己向自己发送，实际是修改prepareVoteList数值
         msgNumber = message.getNumber();
-        msgValue = message.getValue();
+//        System.out.println("preprepare发完给自己投票前"+prepareVoteList);
         prepareSendToSelf(msgNumber,msgValue);
+//        System.out.println("preprepare发完从节点投自己一票后"+prepareVoteList);
     }
 
 
@@ -183,29 +195,60 @@ public class PbftNode {
             return;
         }
         int msgNumber = message.getNumber();
-        String msgValue = message.getValue();
+        //别人发的在判断isgood之前，用原来别人发的messagevalue
+        String msgValue= message.getValue();
+        prepareVote(msgNumber,msgValue);
+        if(isGood){
+            msgValue = message.getValue();
+        }else{
+            msgValue = "坏节点的错误信息";
+        }
         /**
          * prepare阶段投票
          */
-        prepareVote(msgNumber,msgValue);
         Map<String, Integer> voteValue = prepareVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
-//        System.out.println(prepareVoteList);、
+        /**
+         * if(voteKeySet)==3{
+         *      通过这种来判断出问题了在prepare阶段！！！！！！！！要进行view-change
+         *
+         * }
+         */
+        /**TODO
+         *
+         */
+//        System.out.println(prepareVoteList);
+        int count=0;
+        String maxString=null;
+        int maxx=0;
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
-            //prepare投票判断
-            //2*((NodeList.size()+1)/3)+1
-            if(voteNumber>=2*((NodeList.size())/3)+1){
-                sendAllNodes(message,Constant.COMMIT);
-                System.out.println("commit阶段主节点广播..............");
-                ///////////////////////////
-                //自己向自己发送，实际是修改commitVoteList数值
-                msgNumber = message.getNumber();
-                msgValue = message.getValue();
-                commitSendToSelf(msgNumber,msgValue);
-                //投票成功后，防止之后后面慢的票进来，重复操作
-                defendVoteList.add("prepare"+message.getNumber());
+            count+=voteNumber;
+            if(voteNumber>maxx){
+                maxString=voteKey;
+                maxx=voteNumber;
             }
+        }
+        //prepare投票判断
+        //2*((NodeList.size()+1)/3)+1
+        if(count>=2*((NodeList.size()-1)/3)+1){
+            if(isGood){
+                msgValue=maxString;
+            }else{
+                msgValue = "坏节点的错误信息";
+            }
+            message.setValue(msgValue);
+            sendAllNodes(message,Constant.COMMIT);
+            System.out.println("commit阶段主节点广播..............");
+            ///////////////////////////
+            //自己向自己发送，实际是修改commitVoteList数值
+            msgNumber = message.getNumber();
+//            System.out.println(msgValue);
+            System.out.println("commit发完给自己投票前"+commitVoteList);
+            commitSendToSelf(msgNumber,msgValue);
+            System.out.println("commit发完从节点投自己一票后"+commitVoteList);
+            //投票成功后，防止之后后面慢的票进来，重复操作
+            defendVoteList.add("prepare"+message.getNumber());
         }
 
     }
@@ -216,90 +259,91 @@ public class PbftNode {
         if(defendVoteList.contains("commit"+message.getNumber())){
             return;
         }
-//        System.out.println(commitVoteList);
         int msgNumber = message.getNumber();
         String msgValue = message.getValue();
         /**
          * commit阶段投票
          */
         commitVote(msgNumber,msgValue);
-
+        System.out.println(commitVoteList);
         Map<String, Integer> voteValue = commitVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
+//        System.out.println(commitVoteList);
+        int count=0;
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
-            //2*((NodeList.size()+1)/3)+1
-            if(voteNumber>=2*((NodeList.size())/3)+1){
+            count+=voteNumber;
+        }
+        //2*((NodeList.size()+1)/3)+1
+        if(count>=2*((NodeList.size()-1)/3)+1){
 
-                if(message.getControllerType()==Constant.OPERATION2){
-                    Position position = JSON.parseObject(msgValue, Position.class);
-                    this.setX(position.getX());
-                    this.setY(position.getY());
-                    //这个只针对我们移动位置了，然后target目标看到了触发的
-                    System.out.println(Target1.NodeList);
-                    /**
-                     * 由于是不同的main运行的，所以targetMain跑的代码对NodeList维护，我的pbftNodeMain是没有的，我的仍然是原来的NodeList
-                     * 也就是空，我考虑让无人机移动一次就给target发信息来达到模拟目标，定时搜索时候也是一样
-                     */
+            if(message.getControllerType()==Constant.OPERATION2){
+                Position position = JSON.parseObject(msgValue, Position.class);
+                this.setX(position.getX());
+                this.setY(position.getY());
+                //这个只针对我们移动位置了，然后target目标看到了触发的
+                System.out.println(Target1.NodeList);
+                /**
+                 * 由于是不同的main运行的，所以targetMain跑的代码对NodeList维护，我的pbftNodeMain是没有的，我的仍然是原来的NodeList
+                 * 也就是空，我考虑让无人机移动一次就给target发信息来达到模拟目标，定时搜索时候也是一样
+                 */
 //                    Target1.NodeList.get(this.getNode()).setX(position.getX());
 //                    Target1.NodeList.get(this.getNode()).setY(position.getY());
-                    Message messagetoTarget1 = new Message();
-                    messagetoTarget1.setOriOrgNode(this.getNode());
-                    messagetoTarget1.setOrgNode(this.getNode());
-                    messagetoTarget1.setToNode(-2);
-                    messagetoTarget1.setTime(LocalDateTime.now());
-                    //实际就是将接收到的移动位置坐标，自己移动setX,Y之后，将其发送给target1,作用类似找到目标
-                    messagetoTarget1.setValue(message.getValue());
-                    sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
-
-                }
-                if(message.getControllerType()==Constant.OPERATION4){
-                    //根据控制台发出的消息 开启无人机搜索
-                    Field field = JSON.parseObject(msgValue, Field.class);
-                    timePositionTask.addTimeTask(this,field);
-                }
-                if(message.getControllerType()==Constant.OPERATION3){
-                    //根据控制台发出的消息 关闭无人机搜索
-                    timePositionTask.cancelTimeTask(this);
-                }
-                if(message.getControllerType()==Constant.OPERATION6){
-                    //根据控制台发出的消息 开启无人机位置共享
-                    FlyShareLocation.addTimeTask(this);
-                }
-                if(message.getControllerType()==Constant.OPERATION7){
-                    //根据控制台发出的消息 关闭无人机位置共享
-                    FlyShareLocation.cancelTimeTask(this);
-                }
-                if(message.getControllerType()==Constant.OPERATION1){
-                    //收到一个无人机广播消息，来维护NodeLIst中其他无人机位置
-                    String value = message.getValue();
-                    Position position = JSON.parseObject(value, Position.class);
-                    this.getNodeList().get(message.getOriOrgNode()).setX(position.getX());
-                    this.getNodeList().get(message.getOriOrgNode()).setY(position.getY());
-                    //找到目标后关闭无人机搜索
-                    //根据控制台发出的消息 关闭无人机搜索
-//                    timePositionTask.cancelTimeTask(this);
-                }
-                if(message.getControllerType()==Constant.FLYFINDSHARE){
-                    //当发现有无人机找到目标，立即修改位置前往，找到目标的无人机旁边
-                    System.out.println("飞翔");
-                    if(message.getOriOrgNode()!=this.getNode()){
-                        String value = message.getValue();
-                        Position ShareNodePosition = JSON.parseObject(value, Position.class);
-                        this.setX(ShareNodePosition.getX());
-                        this.setY(ShareNodePosition.getY());
-                        System.out.println("飞翔成功");
-                        System.out.println("更新后坐标"+this.getX()+" "+this.getY());
-                        //显示找不到定时任务可以加个if语句
-                        if(timePositionTask.timerMapList.get(this.getNode())!=null&&timePositionTask.timeroutTaskMapList.get(this.getNode())!=null)
-                        timePositionTask.cancelTimeTask(this);
-                    }
-                }
-                replyClient(message,Constant.REPLY);
-                System.out.println("本节点发送reply");
-                defendVoteList.add("commit"+message.getNumber());
+                Message messagetoTarget1 = new Message();
+                messagetoTarget1.setOriOrgNode(this.getNode());
+                messagetoTarget1.setOrgNode(this.getNode());
+                messagetoTarget1.setToNode(-2);
+                messagetoTarget1.setTime(LocalDateTime.now());
+                //实际就是将接收到的移动位置坐标，自己移动setX,Y之后，将其发送给target1,作用类似找到目标
+                messagetoTarget1.setValue(message.getValue());
+                sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
 
             }
+            if(message.getControllerType()==Constant.OPERATION4){
+                //根据控制台发出的消息 开启无人机搜索
+                Field field = JSON.parseObject(msgValue, Field.class);
+                timePositionTask.addTimeTask(this,field);
+            }
+            if(message.getControllerType()==Constant.OPERATION3){
+                //根据控制台发出的消息 关闭无人机搜索
+                timePositionTask.cancelTimeTask(this);
+            }
+            if(message.getControllerType()==Constant.OPERATION6){
+                //根据控制台发出的消息 开启无人机位置共享
+                FlyShareLocation.addTimeTask(this);
+            }
+            if(message.getControllerType()==Constant.OPERATION7){
+                //根据控制台发出的消息 关闭无人机位置共享
+                FlyShareLocation.cancelTimeTask(this);
+            }
+            if(message.getControllerType()==Constant.OPERATION1){
+                //收到一个无人机广播消息，来维护NodeLIst中其他无人机位置
+                String value = message.getValue();
+                Position position = JSON.parseObject(value, Position.class);
+                this.getNodeList().get(message.getOriOrgNode()).setX(position.getX());
+                this.getNodeList().get(message.getOriOrgNode()).setY(position.getY());
+                //找到目标后关闭无人机搜索
+                //根据控制台发出的消息 关闭无人机搜索
+//                    timePositionTask.cancelTimeTask(this);
+            }
+            if(message.getControllerType()==Constant.FLYFINDSHARE){
+                //当发现有无人机找到目标，立即修改位置前往，找到目标的无人机旁边
+                System.out.println("飞翔");
+                if(message.getOriOrgNode()!=this.getNode()){
+                    String value = message.getValue();
+                    Position ShareNodePosition = JSON.parseObject(value, Position.class);
+                    this.setX(ShareNodePosition.getX());
+                    this.setY(ShareNodePosition.getY());
+                    System.out.println("飞翔成功");
+                    System.out.println("更新后坐标"+this.getX()+" "+this.getY());
+                    //显示找不到定时任务可以加个if语句
+                    if(timePositionTask.timerMapList.get(this.getNode())!=null&&timePositionTask.timeroutTaskMapList.get(this.getNode())!=null)
+                        timePositionTask.cancelTimeTask(this);
+                }
+            }
+            replyClient(message,Constant.REPLY);
+            System.out.println("本节点发送reply");
+            defendVoteList.add("commit"+message.getNumber());
         }
     }
     private void onReply(Message message) {
@@ -309,7 +353,7 @@ public class PbftNode {
 //        Set<String> voteKeySet = voteValue.keySet();
 //        for (String voteKey : voteKeySet) {
 //            Integer count = voteValue.get(voteKey);
-//            int maxf=(NodeList.size())/3;
+//            int maxf=(NodeList.size()-1)/3;
 //            //&&voteKey==this.orgClientMessageValue
 //            //这里不知道为啥只能用equals  voteKey.equals(this.orgClientMessageValue)
 //            if(count>=maxf+1&&(voteKey.equals(this.getMessageValueCheckList().get(msgNumber)))){
@@ -385,11 +429,17 @@ public class PbftNode {
             messageSend.setClientPort(message.getClientPort());
             String ipSend = nodeElse.getIp();
             int portSend = nodeElse.getPort();
-            if(isGood){
-                sendUtil.sendNode(ipSend,portSend,messageSend);
-            }else{
-                messageSend.setValue("坏节点的错误信息");
-                sendUtil.sendNode(ipSend,portSend,messageSend);
+            try {
+                if (isGood) {
+                    sendUtil.sendNode(ipSend, portSend, messageSend);
+                } else {
+                    messageSend.setValue("坏节点的错误信息");
+                    sendUtil.sendNode(ipSend, portSend, messageSend);
+                }
+            } catch (IOException e) {
+                // 捕获发送消息过程中可能抛出的异常
+                // 这里可以添加记录日志等操作
+                System.err.println("发送消息到节点 " + nodeElse.getNode() + " 时出现异常：" + e.getMessage());
             }
         }
 

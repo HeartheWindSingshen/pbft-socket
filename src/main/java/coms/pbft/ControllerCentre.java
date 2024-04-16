@@ -116,7 +116,7 @@ public class ControllerCentre {
             if(voteKeySet==null)return;
             for (String voteKey : voteKeySet) {
                 Integer count = voteValue.get(voteKey);
-                int maxf=(NodeList.size())/3;
+                int maxf=(NodeList.size()-1)/3;
                 //&&voteKey==this.orgClientMessageValue
                 //这里不知道为啥只能用equals  voteKey.equals(this.orgClientMessageValue)
                 if(count>=maxf+1){
@@ -127,30 +127,34 @@ public class ControllerCentre {
         }else{
 //            System.out.println(message.getType());
             String status = message.getValue();
-            Status flyStatus = JSON.parseObject(status, Status.class);
-            Node nodeFly = NodeList.get(message.getOrgNode());
-            int oldX = nodeFly.getX();
-            int oldY = nodeFly.getY();
-            nodeFly.setX(flyStatus.getX());
-            nodeFly.setY(flyStatus.getY());
-            int newX = nodeFly.getX();
-            int newY = nodeFly.getY();
+            try {
+                Status flyStatus = JSON.parseObject(status, Status.class);
+                Node nodeFly = NodeList.get(message.getOrgNode());
+                int oldX = nodeFly.getX();
+                int oldY = nodeFly.getY();
+                nodeFly.setX(flyStatus.getX());
+                nodeFly.setY(flyStatus.getY());
+                int newX = nodeFly.getX();
+                int newY = nodeFly.getY();
 //            System.out.println("更新无人机" +nodeFly.getNode() + "位置为"+flyStatus.getX()+" , "+flyStatus.getY());
-            graph[oldX][oldY]=-1;
-            graph[newX][newY]=nodeFly.getNode();
-            for(int i=0;i<10;i++){
-                for(int j=0;j<10;j++){
-                    if(graph[i][j]==-1){
-                        System.out.print("*  ");
-                    }else{
-                        System.out.print(graph[i][j]+"  ");
+                graph[oldX][oldY] = -1;
+                graph[newX][newY] = nodeFly.getNode();
+                for (int i = 0; i < 10; i++) {
+                    for (int j = 0; j < 10; j++) {
+                        if (graph[i][j] == -1) {
+                            System.out.print("*  ");
+                        } else {
+                            System.out.print(graph[i][j] + "  ");
+                        }
                     }
+                    System.out.println();
                 }
-                System.out.println();
+            }catch (Exception e){
+                System.out.println("传入的是坏节点的错误消息");
+            }finally {
+                TestLongSend.endTime = System.nanoTime();
+                System.out.println("指挥塔发送主节点传送消息时长为：" + (TestLongSend.endTime - TestLongSend.startTime) / 1000000);
             }
-            TestLongSend.endTime= System.nanoTime();
-            System.out.println("指挥塔发送主节点传送消息时长为："+(TestLongSend.endTime-TestLongSend.startTime)/1000000);
-
         }
 
     }
@@ -336,74 +340,74 @@ public class ControllerCentre {
 
     }
 //
-//    public static void main(String[] args) throws FileNotFoundException {
-//        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, true);
-//        pbftNode1.start();
-//        PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
-//        pbftNode2.start();
-//        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, true);
-//        pbftNode3.start();
-//        PbftNode pbftNode4 = new PbftNode(3, "127.0.0.1", 9004, true);
-//        pbftNode4.start();
+    public static void main(String[] args) throws FileNotFoundException {
+        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, true);
+        pbftNode1.start();
+        PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
+        pbftNode2.start();
+        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, true);
+        pbftNode3.start();
+        PbftNode pbftNode4 = new PbftNode(3, "127.0.0.1", 9004, true);
+        pbftNode4.start();
 //        Target1 target1 = new Target1(5, 5);
 //        target1.start();
-//        ControllerCentre controllerCentre = new ControllerCentre(-1, "127.0.0.1", 9000);
-//        controllerCentre.start();
-//
-//        Scanner scanner = new Scanner(System.in);
-//        while(true){
-//            int i = scanner.nextInt();
-//            switch (i){
-//                case 1:
-//                    int t1 = scanner.nextInt();
-//                    int t2 = scanner.nextInt();
-//                    int t31 = scanner.nextInt();
-//                    int t32 = scanner.nextInt();
-//                    Point t3 = new Point(t31, t32);
-//                    int t41 = scanner.nextInt();
-//                    int t42 = scanner.nextInt();
-//                    Point t4 = new Point(t41, t42);
-//                    int t51 = scanner.nextInt();
-//                    int t52 = scanner.nextInt();
-//                    Point t5 = new Point(t51, t52);
-//                    int t61 = scanner.nextInt();
-//                    int t62 = scanner.nextInt();
-//                    Point t6 = new Point(t61, t62);
-//                    controllerCentre.Operation1(t1,t2,t3,t4,t5,t6);
-//                    break;
-//                case 2:
-//                    int t7 = scanner.nextInt();
-//                    int t8 = scanner.nextInt();
-//                    controllerCentre.Operation2(t7,t8);
-//                    break;
-//                case 3:
-//                    controllerCentre.Operation3();
-//                    break;
-//                case 4:
-//                    int t91 = scanner.nextInt();
-//                    int t92 = scanner.nextInt();
-//                    Point t9 = new Point(t91, t92);
-//                    int t101 = scanner.nextInt();
-//                    int t102 = scanner.nextInt();
-//                    Point t10 = new Point(t101, t102);
-//                    int t111 = scanner.nextInt();
-//                    int t112 = scanner.nextInt();
-//                    Point t11 = new Point(t111, t112);
-//                    int t121 = scanner.nextInt();
-//                    int t122 = scanner.nextInt();
-//                    Point t12 = new Point(t121, t122);
-//                    controllerCentre.Operation4(t9,t10,t11,t12);
-//                    break;
-//                case 6:
-//                    controllerCentre.Operation6();
-//                    break;
-//                case 7:
-//                    controllerCentre.Operation7();
-//                default:
-//                    break;
-//            }
-//        }
-//    }
+        ControllerCentre controllerCentre = new ControllerCentre(-1, "127.0.0.1", 9000);
+        controllerCentre.start();
+
+        Scanner scanner = new Scanner(System.in);
+        while(true){
+            int i = scanner.nextInt();
+            switch (i){
+                case 1:
+                    int t1 = scanner.nextInt();
+                    int t2 = scanner.nextInt();
+                    int t31 = scanner.nextInt();
+                    int t32 = scanner.nextInt();
+                    Point t3 = new Point(t31, t32);
+                    int t41 = scanner.nextInt();
+                    int t42 = scanner.nextInt();
+                    Point t4 = new Point(t41, t42);
+                    int t51 = scanner.nextInt();
+                    int t52 = scanner.nextInt();
+                    Point t5 = new Point(t51, t52);
+                    int t61 = scanner.nextInt();
+                    int t62 = scanner.nextInt();
+                    Point t6 = new Point(t61, t62);
+                    controllerCentre.Operation1(t1,t2,t3,t4,t5,t6);
+                    break;
+                case 2:
+                    int t7 = scanner.nextInt();
+                    int t8 = scanner.nextInt();
+                    controllerCentre.Operation2(t7,t8);
+                    break;
+                case 3:
+                    controllerCentre.Operation3();
+                    break;
+                case 4:
+                    int t91 = scanner.nextInt();
+                    int t92 = scanner.nextInt();
+                    Point t9 = new Point(t91, t92);
+                    int t101 = scanner.nextInt();
+                    int t102 = scanner.nextInt();
+                    Point t10 = new Point(t101, t102);
+                    int t111 = scanner.nextInt();
+                    int t112 = scanner.nextInt();
+                    Point t11 = new Point(t111, t112);
+                    int t121 = scanner.nextInt();
+                    int t122 = scanner.nextInt();
+                    Point t12 = new Point(t121, t122);
+                    controllerCentre.Operation4(t9,t10,t11,t12);
+                    break;
+                case 6:
+                    controllerCentre.Operation6();
+                    break;
+                case 7:
+                    controllerCentre.Operation7();
+                default:
+                    break;
+            }
+        }
+    }
 
 
 
