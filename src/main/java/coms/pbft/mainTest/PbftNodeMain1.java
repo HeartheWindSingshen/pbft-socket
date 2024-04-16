@@ -6,7 +6,7 @@ import java.io.FileNotFoundException;
 
 public class PbftNodeMain1 {
     public static void main(String[] args) throws FileNotFoundException {
-        PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, false);
+        PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
         pbftNode2.start();
 
     }

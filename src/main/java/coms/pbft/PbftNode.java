@@ -24,6 +24,11 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 @Data
 public class PbftNode {
     private int node;
@@ -33,7 +38,10 @@ public class PbftNode {
     private boolean isGood;
     private int x;
     private int y;
-
+    //关于定时
+    private boolean receivedMessage=false;
+    private ScheduledExecutorService executor;
+    private ScheduledFuture<?> task;
     //所有集群节点信息
     private List<Node> NodeList=new ArrayList<Node>();
     //prepare记录投票
@@ -53,6 +61,10 @@ public class PbftNode {
         this.port = port;
         this.isGood=isGood;
         LoadNodes();
+        //缓兵之计，等viewchange之后更改view时候也得设置start了
+        if(view%NodeList.size()!=node){
+            this.startChecking();
+        }
     }
     public void start(){
         new Thread(new Runnable() {
@@ -163,6 +175,11 @@ public class PbftNode {
 
 
     private void onPrePrepare(Message message) throws IOException {
+
+        //接收到主节点，取消定时数值
+        this.receiveMessage();
+
+
         //相当于主节点再pre-prepare阶段就已经投了，prepare的票了
         int msgNumber = message.getNumber();
         String msgValue=message.getValue();
@@ -614,6 +631,38 @@ public class PbftNode {
 //            if(nodeElse!=this.node){
             NodeList.add(new Node(nodeElse,ipElse,portElse,0,0));
 //            }
+        }
+    }
+    public void startChecking(){
+        executor = Executors.newScheduledThreadPool(1);
+
+        // 每隔一段时间检查是否收到了主节点的消息
+        task=executor.scheduleAtFixedRate(() -> {
+            if (!receivedMessage) {
+                // 如果没有收到消息，发起view-change
+                initiateViewChange();
+            } else {
+                // 如果收到了消息，重置标志位
+                receivedMessage = false;
+            }
+        }, 5, 5, TimeUnit.SECONDS); // 每秒钟执行一次检查
+    }
+    public void receiveMessage() {
+        // 当收到主节点的消息时，设置标志位
+        receivedMessage = true;
+    }
+    public void initiateViewChange() {
+        // 发起view-change的逻辑
+        System.out.println("开启view-change");
+        this.cancelChecking();
+    }
+    // 取消周期性任务
+    public void cancelChecking() {
+        if (task != null) {
+            task.cancel(true); // 取消任务
+        }
+        if (executor != null) {
+            executor.shutdown(); // 关闭线程池
         }
     }
 
