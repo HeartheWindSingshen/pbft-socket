@@ -34,7 +34,7 @@ public class FlyShareLocation {
                 msgClient.setControllerType(Constant.OPERATION1);
                 msgClient.setType(Constant.REQUEST);
                 //TODO
-                msgClient.setToNode(0);
+                msgClient.setToNode(pbftnode.getView()%pbftnode.getNodeList().size());
                 msgClient.setTime(LocalDateTime.now());
                 msgClient.setOrgNode(pbftnode.getNode());
                 msgClient.setNumber(Varible.number++);

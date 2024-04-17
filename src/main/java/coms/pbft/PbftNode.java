@@ -50,7 +50,10 @@ public class PbftNode {
     private Map<Integer, Map<String,Integer>>commitVoteList=new HashMap<>();
     //reply记录返回
     private Map<Integer,Map<String,Integer>>replyVoteList=new HashMap<>();
-
+    //view-change记录投票
+    private Map<Integer,Map<String,Integer>>ViewChangeVoteList=new HashMap<>();
+    //view-change-ack记录投票   和reply相似
+    private Map<Integer,Map<String,Integer>>ViewChangeAckVoteList=new HashMap<>();
     //记录在prepare和commit函数内部已经发送的对应COMMIT和REPLY，防止当票数达到界限值就发送，之后的票来，就不能再去操作了，否则会重复发送，故设置这两个变量，控制
     //里面记录 prepare1或者commit1或者reply或者viewChange或者viewChangeAck 请求来当对应函数接收到请求后，直接忽略，因为已经投票成功了
     private Set<String> defendVoteList=new HashSet<>();
@@ -133,12 +136,20 @@ public class PbftNode {
                     break;
                 case Constant.FIND:
                     onFind(message);
+                case Constant.VIEWCHANGE:
+                    onNodeViewChange(message);
+                    break;
+                case Constant.VIEWCHANGEACK:
+                    onViewChangeAck(message);
+                    break;
+                case Constant.NEWVIEW:
+                    onNewView(message);
+                    break;
                 default:
                     break;
             }
         }
     }
-
 
     private void onRequest(Message message) throws IOException {
 //        根据朝代计算主节点
@@ -411,6 +422,92 @@ public class PbftNode {
         }
     }
 
+    private void onNodeViewChange(Message message) throws IOException {
+        if(defendVoteList.contains("viewChange"+message.getNumber())){
+            return;
+        }
+        int msgNumber = message.getNumber();
+
+        viewChangeVote(msgNumber,message.getValue());
+
+        Map<String, Integer> voteValue = ViewChangeVoteList.get(msgNumber);
+        Set<String> voteKeySet = voteValue.keySet();
+        System.out.println(ViewChangeVoteList);
+
+        int count=0;
+        String maxString=null;
+        int maxx=0;
+        for (String voteKey : voteKeySet) {
+            Integer voteNumber = voteValue.get(voteKey);
+            count+=voteNumber;
+            if(voteNumber>maxx){
+                maxString=voteKey;
+                maxx=voteNumber;
+            }
+        }
+        //2*((NodeList.size()+1)/3)+1
+        if(count>=2*((NodeList.size())/3)+1){
+            Node nodekernal = NodeList.get(view % (NodeList.size()));
+            //因为onViewChangeAck的voteNumber>=2*((NodeList.size())/3，所以不需要自己给自己发
+            if(nodekernal.getNode()!=this.node){
+                Message messageSend = new Message();
+                messageSend.setOrgNode(node);
+                messageSend.setToNode(view % (NodeList.size()));
+                messageSend.setType(Constant.VIEWCHANGEACK);
+                messageSend.setTime(LocalDateTime.now());
+                messageSend.setNumber(msgNumber);
+                messageSend.setValue(maxString);
+                messageSend.setView(view);
+                messageSend.setClientPort(message.getClientPort());
+                messageSend.setClientIp(message.getClientIp());
+                //因为不经过sendAll了所以要判断一下
+                if(isGood){
+                    sendUtil.sendNode(nodekernal.getIp(),nodekernal.getPort(),messageSend);
+                }else{
+                    messageSend.setValue("坏节点在view-change发送消息");
+//                    System.out.println("主节点在view-change-ack作恶，我们模拟就让它随便发了");
+                    sendUtil.sendNode(nodekernal.getIp(),nodekernal.getPort(),messageSend);
+                };
+            }
+            defendVoteList.add("viewChange"+message.getNumber());
+
+        }
+    }
+
+    private void onViewChangeAck(Message message) throws IOException {
+        if(defendVoteList.contains("viewChangeAck"+message.getNumber())){
+            return;
+        }
+        int msgNumber = message.getNumber();
+        String msgValue = message.getValue();
+        viewChangeAckVote(msgNumber,msgValue);
+        Map<String, Integer> voteValue = ViewChangeAckVoteList.get(msgNumber);
+        Set<String> voteKeySet = voteValue.keySet();
+        int count=0;
+        for (String voteKey : voteKeySet) {
+            Integer voteNumber = voteValue.get(voteKey);
+            count+=voteNumber;
+        }
+        //2*((NodeList.size()+1)/3)   //这个前一层没给自己传 自己是主节点
+        if(count>=2*((NodeList.size())/3)){
+            message.setValue("新朝代来了！");
+            message.setView(this.view);
+            sendAllNodes(message,Constant.NEWVIEW);
+            //并且向client发送消息，让其也改变view
+            message.setType(Constant.NEWVIEW);
+            sendUtil.sendNode("127.0.0.1",9000,message);
+            defendVoteList.add("viewChangeAck"+message.getNumber());
+        }
+
+    }
+
+    private void onNewView(Message message)  {
+        //当新主节点被选举出来时候，向周围广播新朝代，如果之前宕机的旧主节点或者坏旧主节点，并没有执行那个定时任务，所以要修改新的view
+        if(message.getView()!=this.view){
+            this.view=message.getView();
+        }
+    }
+
 
     /**
      * 功能性函数
@@ -450,7 +547,11 @@ public class PbftNode {
                 if (isGood) {
                     sendUtil.sendNode(ipSend, portSend, messageSend);
                 } else {
-                    messageSend.setValue("坏节点的错误信息");
+                    if(type==Constant.VIEWCHANGE){
+                        messageSend.setValue("坏节点在view-change发送消息");
+                    }else{
+                        messageSend.setValue("坏节点的错误信息");
+                    }
                     sendUtil.sendNode(ipSend, portSend, messageSend);
                 }
             } catch (IOException e) {
@@ -562,7 +663,21 @@ public class PbftNode {
             }
         }
     }
-
+    private void ViewChangeToMySelf(int msgNumber, String msgValue) {
+        if(!ViewChangeVoteList.containsKey(msgNumber)){
+            HashMap<String, Integer> mapValue = new HashMap<>();
+            mapValue.put(msgValue,1);
+            ViewChangeVoteList.put(msgNumber,mapValue);
+        }else{
+            Map<String, Integer> mapValue = ViewChangeVoteList.get(msgNumber);
+            if(!mapValue.containsKey(msgValue)){
+                //理论上给自己投票，只会进入该域，但是保险和懒起见，直接复制整个if语句
+                mapValue.put(msgValue,1);
+            }else{
+                mapValue.put(msgValue,mapValue.get(msgValue)+1);
+            }
+        }
+    }
     /**
      * prepare 投票阶段
      * @param msgNumber
@@ -612,7 +727,36 @@ public class PbftNode {
             }
         }
     }
-
+    private void viewChangeVote(int msgNumber, String msgValue) {
+        if(!ViewChangeVoteList.containsKey(msgNumber)){
+            HashMap<String, Integer> mapValue = new HashMap<>();
+            mapValue.put(msgValue,1);
+            ViewChangeVoteList.put(msgNumber,mapValue);
+        }else{
+            Map<String, Integer> mapValue = ViewChangeVoteList.get(msgNumber);
+            if(!mapValue.containsKey(msgValue)){
+                mapValue.put(msgValue,1);
+            }else{
+                Integer add = mapValue.get(msgValue);
+                mapValue.put(msgValue,add+1);
+            }
+        }
+    }
+    private void viewChangeAckVote(int msgNumber, String msgValue) {
+        if (!ViewChangeAckVoteList.containsKey(msgNumber)) {
+            HashMap<String, Integer> mapValue = new HashMap<>();
+            mapValue.put(msgValue, 1);
+            ViewChangeAckVoteList.put(msgNumber, mapValue);
+        } else {
+            Map<String, Integer> mapValue = ViewChangeAckVoteList.get(msgNumber);
+            if (!mapValue.containsKey(msgValue)) {
+                mapValue.put(msgValue, 1);
+            } else {
+                Integer add = mapValue.get(msgValue);
+                mapValue.put(msgValue, add + 1);
+            }
+        }
+    }
     /**
      * 导入本地节点存储的其他节点信息
      * @throws FileNotFoundException
@@ -640,21 +784,26 @@ public class PbftNode {
         task=executor.scheduleAtFixedRate(() -> {
             if (!receivedMessage) {
                 // 如果没有收到消息，发起view-change
-                initiateViewChange();
+                try {
+                    initiateViewChange();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             } else {
                 // 如果收到了消息，重置标志位
                 receivedMessage = false;
             }
-        }, 5, 5, TimeUnit.SECONDS); // 每秒钟执行一次检查
+        }, 10, 5, TimeUnit.SECONDS); // 每秒钟执行一次检查
     }
     public void receiveMessage() {
         // 当收到主节点的消息时，设置标志位
         receivedMessage = true;
     }
-    public void initiateViewChange() {
+    public void initiateViewChange() throws IOException {
         // 发起view-change的逻辑
         System.out.println("开启view-change");
         this.cancelChecking();
+        viewChangeStart();
     }
     // 取消周期性任务
     public void cancelChecking() {
@@ -664,6 +813,24 @@ public class PbftNode {
         if (executor != null) {
             executor.shutdown(); // 关闭线程池
         }
+    }
+    public void viewChangeStart() throws IOException {
+        System.out.println("执行viewchangestart");
+        this.view=this.view+1;
+        Message message = new Message();
+        if(isGood){
+            message.setValue("发起view-change");
+        }else{
+            message.setValue("坏节点在view-change发送消息");
+        }
+        message.setOriOrgNode(-5);
+        message.setNumber(-5000);
+        int msgNumber = message.getNumber();
+        String msgValue = message.getValue();
+        //又恢复了 取消自己给自己投票，然后将onviewchange函数的if(count)对应减一，也就是变成2，默认自己给自己投了，手动给自己投会出现时序性问题
+        ViewChangeToMySelf(msgNumber,msgValue);
+        System.out.println("已经执行自己给自己在view-change投票");
+        sendAllNodes(message,Constant.VIEWCHANGE);
     }
 
 

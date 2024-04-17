@@ -94,12 +94,15 @@ public class ControllerCentre {
                 case Constant.REPLY:
                     onReply(message);
                     break;
+                case Constant.NEWVIEW:
+                    onNewView(message);
                 default:
                     break;
             }
 
         }
     }
+
 
     private void onReply(Message message) {
         int controllerType = message.getControllerType();
@@ -158,7 +161,11 @@ public class ControllerCentre {
         }
 
     }
+    private void onNewView(Message message) {
 
+        this.view=message.getView();
+        System.out.println("控制台修改了它的view");
+    }
     //执行搜索特定区域
     public void Operation1(int x, int y, Point t1, Point t2, Point t3, Point t4){
         Operation2(x,y);
@@ -175,7 +182,7 @@ public class ControllerCentre {
         msgClient.setControllerType(Constant.OPERATION2);
         msgClient.setType(Constant.REQUEST);
         //TODO
-        msgClient.setToNode(0);
+        msgClient.setToNode(this.getView()% NodeList.size());
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
         msgClient.setNumber(Varible.number++);
@@ -200,7 +207,7 @@ public class ControllerCentre {
         msgClient.setControllerType(Constant.OPERATION3);
         msgClient.setType(Constant.REQUEST);
         //TODO
-        msgClient.setToNode(0);
+        msgClient.setToNode(this.getView()% NodeList.size());
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
         msgClient.setNumber(Varible.number++);
@@ -227,7 +234,7 @@ public class ControllerCentre {
         msgClient.setControllerType(Constant.OPERATION4);
         msgClient.setType(Constant.REQUEST);
         //TODO
-        msgClient.setToNode(0);
+        msgClient.setToNode(this.getView()% NodeList.size());
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
         msgClient.setNumber(Varible.number++);
@@ -260,7 +267,7 @@ public class ControllerCentre {
                 msgClient.setControllerType(Constant.TIMEOPERATION5);
                 msgClient.setType(Constant.REQUEST);
                 //TODO
-                msgClient.setToNode(0);
+                msgClient.setToNode(me.getView()% NodeList.size());
                 msgClient.setTime(LocalDateTime.now());
                 msgClient.setOrgNode(me.getNode());
                 msgClient.setNumber(Varible.number++);
@@ -297,7 +304,7 @@ public class ControllerCentre {
         msgClient.setControllerType(Constant.OPERATION6);
         msgClient.setType(Constant.REQUEST);
         //TODO
-        msgClient.setToNode(0);
+        msgClient.setToNode(this.getView()% NodeList.size());
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
         msgClient.setNumber(Varible.number++);
@@ -341,11 +348,11 @@ public class ControllerCentre {
     }
 //
     public static void main(String[] args) throws FileNotFoundException {
-        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, true);
-        pbftNode1.start();
+//        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, false);
+//        pbftNode1.start();
         PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
         pbftNode2.start();
-        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, true);
+        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, false);
         pbftNode3.start();
         PbftNode pbftNode4 = new PbftNode(3, "127.0.0.1", 9004, true);
         pbftNode4.start();

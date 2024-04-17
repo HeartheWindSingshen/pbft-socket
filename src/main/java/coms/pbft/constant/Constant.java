@@ -1,7 +1,6 @@
 package coms.pbft.constant;
 
 public class Constant {
-    public static final int CHANGEVIEW=-4;
     public static final int VIEWCHANGE=-3;
     public static final int VIEWCHANGEACK=-2;
     public static final int NEWVIEW=-1;
