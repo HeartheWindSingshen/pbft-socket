@@ -29,6 +29,7 @@ public class FlyShareLocation {
                 position.setX(pbftnode.getX());
                 position.setY(pbftnode.getY());
                 String value= JSON.toJSONString(position);
+
                 Message msgClient = new Message();
                 msgClient.setOriOrgNode(pbftnode.getNode());
                 msgClient.setControllerType(Constant.OPERATION1);
@@ -43,7 +44,7 @@ public class FlyShareLocation {
                 //只在消息上弄客户端ip，端口
                 msgClient.setClientIp(pbftnode.getIp());
                 msgClient.setClientPort(pbftnode.getPort());
-                int mainIndex = 0;
+                int mainIndex = pbftnode.getView()%pbftnode.getNodeList().size();
                 try {
                     sendUtil.sendNode(pbftnode.getNodeList().get(mainIndex).getIp(), pbftnode.getNodeList().get(mainIndex).getPort(), msgClient);
                 } catch (IOException e) {
@@ -54,7 +55,7 @@ public class FlyShareLocation {
 
         // 定义任务执行的间隔时间（以毫秒为单位）
         long delay = 10; // 初始延迟，即第一次执行的延迟时间
-        long interval =4000; // 间隔时间，每隔5秒执行一次
+        long interval =5000; // 间隔时间，每隔5秒执行一次
 
         // 启动定时任务
         timer.scheduleAtFixedRate(task, delay, interval);

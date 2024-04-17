@@ -192,7 +192,7 @@ public class ControllerCentre {
         //只在消息上弄客户端ip，端口
         msgClient.setClientIp(this.getIp());
         msgClient.setClientPort(this.getPort());
-        int mainIndex = 0;
+        int mainIndex = this.getView()%this.getNodeList().size();
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
@@ -217,7 +217,7 @@ public class ControllerCentre {
         //只在消息上弄客户端ip，端口
         msgClient.setClientIp(this.getIp());
         msgClient.setClientPort(this.getPort());
-        int mainIndex = 0;
+        int mainIndex = this.getView()%this.getNodeList().size();
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
@@ -244,7 +244,7 @@ public class ControllerCentre {
         //只在消息上弄客户端ip，端口
         msgClient.setClientIp(this.getIp());
         msgClient.setClientPort(this.getPort());
-        int mainIndex = 0;
+        int mainIndex = this.getView()%this.getNodeList().size();
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
@@ -315,7 +315,7 @@ public class ControllerCentre {
         //只在消息上弄客户端ip，端口
         msgClient.setClientIp(this.getIp());
         msgClient.setClientPort(this.getPort());
-        int mainIndex = 0;
+        int mainIndex = this.getView()%this.getNodeList().size();
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
@@ -331,7 +331,7 @@ public class ControllerCentre {
         msgClient.setControllerType(Constant.OPERATION7);
         msgClient.setType(Constant.REQUEST);
         //TODO
-        msgClient.setToNode(0);
+        msgClient.setToNode(this.getView()%this.getNodeList().size());
         msgClient.setTime(LocalDateTime.now());
         msgClient.setOrgNode(this.getNode());
         msgClient.setNumber(Varible.number++);
@@ -340,7 +340,7 @@ public class ControllerCentre {
         //只在消息上弄客户端ip，端口
         msgClient.setClientIp(this.getIp());
         msgClient.setClientPort(this.getPort());
-        int mainIndex = 0;
+        int mainIndex = this.getView()%this.getNodeList().size();
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {

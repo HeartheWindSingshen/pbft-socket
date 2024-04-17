@@ -313,15 +313,22 @@ public class PbftNode {
         Set<String> voteKeySet = voteValue.keySet();
 //        System.out.println(commitVoteList);
         int count=0;
+        String maxString=null;
+        int maxx=0;
         for (String voteKey : voteKeySet) {
             Integer voteNumber = voteValue.get(voteKey);
             count+=voteNumber;
+            if(voteNumber>maxx){
+                maxString=voteKey;
+                maxx=voteNumber;
+            }
         }
         //2*((NodeList.size()+1)/3)+1
         if(count>=2*((NodeList.size()-1)/3)+1){
 
             if(message.getControllerType()==Constant.OPERATION2){
-                Position position = JSON.parseObject(msgValue, Position.class);
+                System.out.println("错误信息时"+maxString);
+                Position position = JSON.parseObject(maxString, Position.class);
                 this.setX(position.getX());
                 this.setY(position.getY());
                 //这个只针对我们移动位置了，然后target目标看到了触发的
@@ -344,7 +351,7 @@ public class PbftNode {
             }
             if(message.getControllerType()==Constant.OPERATION4){
                 //根据控制台发出的消息 开启无人机搜索
-                Field field = JSON.parseObject(msgValue, Field.class);
+                Field field = JSON.parseObject(maxString, Field.class);
                 timePositionTask.addTimeTask(this,field);
             }
             if(message.getControllerType()==Constant.OPERATION3){
@@ -360,14 +367,18 @@ public class PbftNode {
                 FlyShareLocation.cancelTimeTask(this);
             }
             if(message.getControllerType()==Constant.OPERATION1){
-                //收到一个无人机广播消息，来维护NodeLIst中其他无人机位置
-                String value = message.getValue();
-                Position position = JSON.parseObject(value, Position.class);
-                this.getNodeList().get(message.getOriOrgNode()).setX(position.getX());
-                this.getNodeList().get(message.getOriOrgNode()).setY(position.getY());
-                //找到目标后关闭无人机搜索
-                //根据控制台发出的消息 关闭无人机搜索
+                try{
+                    //收到一个无人机广播消息，来维护NodeLIst中其他无人机位置
+                    String value = message.getValue();
+                    Position position = JSON.parseObject(value, Position.class);
+                    this.getNodeList().get(message.getOriOrgNode()).setX(position.getX());
+                    this.getNodeList().get(message.getOriOrgNode()).setY(position.getY());
+                    //找到目标后关闭无人机搜索
+                    //根据控制台发出的消息 关闭无人机搜索
 //                    timePositionTask.cancelTimeTask(this);
+                }catch (Exception e){
+                    System.out.println("共享位置传入的是坏节点的错误消息");
+                }
             }
             if(message.getControllerType()==Constant.FLYFINDSHARE){
                 //当发现有无人机找到目标，立即修改位置前往，找到目标的无人机旁边
@@ -384,6 +395,7 @@ public class PbftNode {
                         timePositionTask.cancelTimeTask(this);
                 }
             }
+            message.setValue(maxString);
             replyClient(message,Constant.REPLY);
             System.out.println("本节点发送reply");
             defendVoteList.add("commit"+message.getNumber());

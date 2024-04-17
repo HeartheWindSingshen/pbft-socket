@@ -53,34 +53,40 @@ public class Target1 {
                             if (count > 0) {
                                 Message message = JSON.parseObject(new String(bytes), Message.class);
                                 String value = message.getValue();
-                                Position position = JSON.parseObject(value, Position.class);
-                                //这里ornode或者orornode都一样
-                                int org = message.getOriOrgNode();
-                                Target1.NodeList.get(org).setX(position.getX());
-                                Target1.NodeList.get(org).setY(position.getY());
+                                System.out.println("target"+value);
+                                try{
+                                    Position position = JSON.parseObject(value, Position.class);
+                                    //这里ornode或者orornode都一样
+                                    int org = message.getOriOrgNode();
+                                    System.out.println(message);
+                                    System.out.println(org);
+                                    Target1.NodeList.get(org).setX(position.getX());
+                                    Target1.NodeList.get(org).setY(position.getY());
 //                                System.out.println(org+" 修改位置成功");
-                                //&&!isFinished作用是已经被发现了，之后，就不需要给再说了，之后防止定时发送报错，所以单纯接收消息
-                                if (!isFinished && position.getX() == target1.getTarget1Position().getX() && position.getY() == target1.getTarget1Position().getY()) {
-                                    Message msgFind = new Message();
-                                    position = target1.getTarget1Position();
-                                    value = JSON.toJSONString(position);
-                                    msgFind.setOriOrgNode(-2);
-                                    msgFind.setType(Constant.FIND);
-                                    //TODO
-                                    msgFind.setToNode(org);
-                                    msgFind.setTime(LocalDateTime.now());
-                                    msgFind.setOrgNode(-2);
-                                    msgFind.setNumber(Varible.number++);
-                                    msgFind.setView(-2);
-                                    msgFind.setValue(value);
-                                    try {
-                                        sendUtil.sendNode(NodeList.get(org).getIp(), NodeList.get(org).getPort(), msgFind);
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    //&&!isFinished作用是已经被发现了，之后，就不需要给再说了，之后防止定时发送报错，所以单纯接收消息
+                                    if (!isFinished && position.getX() == target1.getTarget1Position().getX() && position.getY() == target1.getTarget1Position().getY()) {
+                                        Message msgFind = new Message();
+                                        position = target1.getTarget1Position();
+                                        value = JSON.toJSONString(position);
+                                        msgFind.setOriOrgNode(-2);
+                                        msgFind.setType(Constant.FIND);
+                                        //TODO
+                                        msgFind.setToNode(org);
+                                        msgFind.setTime(LocalDateTime.now());
+                                        msgFind.setOrgNode(-2);
+                                        msgFind.setNumber(Varible.number++);
+                                        msgFind.setView(-2);
+                                        msgFind.setValue(value);
+                                        try {
+                                            sendUtil.sendNode(NodeList.get(org).getIp(), NodeList.get(org).getPort(), msgFind);
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        System.out.println("已经发送了！！！！被发现了");
+                                        isFinished=true;
                                     }
-                                    System.out.println("已经发送了！！！！被发现了");
-                                    isFinished=true;
-
+                                }catch (Exception e){
+                                    System.out.println("接收到有误的数据，咱不做处理");
                                 }
                             } else {
                                 break;
