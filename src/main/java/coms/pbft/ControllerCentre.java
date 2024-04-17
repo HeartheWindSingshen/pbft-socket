@@ -350,11 +350,11 @@ public class ControllerCentre {
     }
 //
     public static void main(String[] args) throws FileNotFoundException {
-//        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, false);
-//        pbftNode1.start();
+        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, false);
+        pbftNode1.start();
         PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
         pbftNode2.start();
-        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, false);
+        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, true);
         pbftNode3.start();
         PbftNode pbftNode4 = new PbftNode(3, "127.0.0.1", 9004, true);
         pbftNode4.start();

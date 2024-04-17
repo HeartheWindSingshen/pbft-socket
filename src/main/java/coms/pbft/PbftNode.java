@@ -169,7 +169,14 @@ public class PbftNode {
 //            ClearPrepareCommitReplyVoteDefendMain(msgNumber);
             //client向主节点发送请求情况
             //发送广播
-            sendAllNodes(message,Constant.PRE_PREPARE);
+            //主节点是好节点，则没有问题
+            if(isGood){
+                sendAllNodes(message,Constant.PRE_PREPARE);
+            }else{
+                //主节点是有坏节点，则发给其他节点信息要不同
+                sendAllNodesError(message,Constant.PRE_PREPARE);
+
+            }
             System.out.println("Pre-prepare阶段主节点广播..............");
             //自己向自己发送，实际是修改prepareVoteList数值
             //这部分相当于主节点在pre-prepare发送时候已经在prepare投票了，所以要都提前添加值,
@@ -211,21 +218,29 @@ public class PbftNode {
         System.out.println("prepare阶段节点广播..............");
         //自己向自己发送，实际是修改prepareVoteList数值
         msgNumber = message.getNumber();
-//        System.out.println("preprepare发完给自己投票前"+prepareVoteList);
+        System.out.println("preprepare发完给自己投票前"+prepareVoteList);
         prepareSendToSelf(msgNumber,msgValue);
-//        System.out.println("preprepare发完从节点投自己一票后"+prepareVoteList);
+        System.out.println("preprepare发完从节点投自己一票后"+prepareVoteList);
     }
 
 
     private void onPrepare(Message message) throws IOException {
         //已经票数够了，发送了，所以不用操作了
         if(defendVoteList.contains("prepare"+message.getNumber())){
+            int msgNumber = message.getNumber();
+            String msgValue= message.getValue();
+            prepareVote(msgNumber,msgValue);
+            System.out.println("hahaha"+prepareVoteList);
+            if(prepareVoteList.get(msgNumber).size()==3){
+                viewChangeStart();
+            }
             return;
         }
         int msgNumber = message.getNumber();
         //别人发的在判断isgood之前，用原来别人发的messagevalue
         String msgValue= message.getValue();
         prepareVote(msgNumber,msgValue);
+
         if(isGood){
             msgValue = message.getValue();
         }else{
@@ -245,7 +260,7 @@ public class PbftNode {
         /**TODO
          *
          */
-//        System.out.println(prepareVoteList);
+        System.out.println(prepareVoteList);
         int count=0;
         String maxString=null;
         int maxx=0;
@@ -272,9 +287,9 @@ public class PbftNode {
             //自己向自己发送，实际是修改commitVoteList数值
             msgNumber = message.getNumber();
 //            System.out.println(msgValue);
-            System.out.println("commit发完给自己投票前"+commitVoteList);
+//            System.out.println("commit发完给自己投票前"+commitVoteList);
             commitSendToSelf(msgNumber,msgValue);
-            System.out.println("commit发完从节点投自己一票后"+commitVoteList);
+//            System.out.println("commit发完从节点投自己一票后"+commitVoteList);
             //投票成功后，防止之后后面慢的票进来，重复操作
             defendVoteList.add("prepare"+message.getNumber());
         }
@@ -293,7 +308,7 @@ public class PbftNode {
          * commit阶段投票
          */
         commitVote(msgNumber,msgValue);
-        System.out.println(commitVoteList);
+//        System.out.println(commitVoteList);
         Map<String, Integer> voteValue = commitVoteList.get(msgNumber);
         Set<String> voteKeySet = voteValue.keySet();
 //        System.out.println(commitVoteList);
@@ -497,6 +512,9 @@ public class PbftNode {
             message.setType(Constant.NEWVIEW);
             sendUtil.sendNode("127.0.0.1",9000,message);
             defendVoteList.add("viewChangeAck"+message.getNumber());
+            //取消新主节点的原来的定时，这个没法在newview中搞
+            System.out.println(this.getNode()+"取消了定时");
+            this.cancelChecking();
         }
 
     }
@@ -505,6 +523,15 @@ public class PbftNode {
         //当新主节点被选举出来时候，向周围广播新朝代，如果之前宕机的旧主节点或者坏旧主节点，并没有执行那个定时任务，所以要修改新的view
         if(message.getView()!=this.view){
             this.view=message.getView();
+        }
+        //非0节点记得取消定时
+        if(this.getNode()!=(this.view-1)%this.getNodeList().size()&&(this.getNode()!=this.view%this.getNodeList().size())){
+            System.out.println(this.getNode()+"取消了定时");
+            this.cancelChecking();
+        }
+        if(this.getNode()!=this.view%this.getNodeList().size()){
+            System.out.println(this.getNode()+"开启了定时");
+            this.startChecking();
         }
     }
 
@@ -562,7 +589,51 @@ public class PbftNode {
         }
 
     }
+    public void sendAllNodesError(Message message,int type) throws IOException {
+        String msgValue= message.getValue();
+        int number = message.getNumber();
+        int index=0;
+        for (Node nodeElse : NodeList) {
+            if(nodeElse.getNode()==this.node){
+                //跳过自己广播
+                System.out.println("跳过自己广播");
+                continue;
+            }
+            Message messageSend = new Message();
+            messageSend.setOriOrgNode(message.getOriOrgNode());
+            messageSend.setControllerType(message.getControllerType());
+            messageSend.setOrgNode(this.node);
+            //根据记录表中数据，发送去向节点编号
+            messageSend.setToNode(nodeElse.getNode());
+            messageSend.setView(this.view);
+            messageSend.setTime(LocalDateTime.now());
+            messageSend.setValue(msgValue);
+            messageSend.setType(type);
+            messageSend.setNumber(number);
+            messageSend.setClientIp(message.getClientIp());
+            messageSend.setClientPort(message.getClientPort());
+            String ipSend = nodeElse.getIp();
+            int portSend = nodeElse.getPort();
+            try {
+                if (isGood) {
+                    sendUtil.sendNode(ipSend, portSend, messageSend);
+                } else {
+                    if(type==Constant.VIEWCHANGE){
+                        messageSend.setValue("坏节点在view-change发送消息");
+                    }else{
+                        messageSend.setValue("坏节点的错误信息"+index);
+                        index++;
+                    }
+                    sendUtil.sendNode(ipSend, portSend, messageSend);
+                }
+            } catch (IOException e) {
+                // 捕获发送消息过程中可能抛出的异常
+                // 这里可以添加记录日志等操作
+                System.err.println("发送消息到节点 " + nodeElse.getNode() + " 时出现异常：" + e.getMessage());
+            }
+        }
 
+    }
 
     /**
      * 回复外部客户端
@@ -801,7 +872,7 @@ public class PbftNode {
     }
     public void initiateViewChange() throws IOException {
         // 发起view-change的逻辑
-        System.out.println("开启view-change");
+        System.out.println("开启定时的view-change");
         this.cancelChecking();
         viewChangeStart();
     }
