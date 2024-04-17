@@ -277,12 +277,14 @@ public class ControllerCentre {
                 //只在消息上弄客户端ip，端口
                 msgClient.setClientIp(me.getIp());
                 msgClient.setClientPort(me.getPort());
-                int mainIndex = 0;
+                int mainIndex = me.getView()%me.getNodeList().size();
                 try {
                     TestLongSend.startTime= System.nanoTime();
                     sendUtil.sendNode(me.getNodeList().get(mainIndex).getIp(), me.getNodeList().get(mainIndex).getPort(), msgClient);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    //抛出异常会导致代码执行中断，从而导致定时任务终止
+//                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
             }
         };

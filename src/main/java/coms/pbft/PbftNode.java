@@ -831,7 +831,55 @@ public class PbftNode {
         ViewChangeToMySelf(msgNumber,msgValue);
         System.out.println("已经执行自己给自己在view-change投票");
         sendAllNodes(message,Constant.VIEWCHANGE);
-    }
+        onNodeViewChangeLate(msgNumber,msgValue);
 
+    }
+    private void onNodeViewChangeLate(int msgNumber,String msgValue) throws IOException {
+        if (defendVoteList.contains("viewChange" + msgNumber)) {
+            return;
+        }
+        System.out.println("进入了里面");
+        Map<String, Integer> voteValue = ViewChangeVoteList.get(msgNumber);
+        Set<String> voteKeySet = voteValue.keySet();
+        System.out.println("onNodeviewchangelate的" + ViewChangeVoteList);
+
+        int count = 0;
+        String maxString = null;
+        int maxx = 0;
+        for (String voteKey : voteKeySet) {
+            Integer voteNumber = voteValue.get(voteKey);
+            count += voteNumber;
+            if (voteNumber > maxx) {
+                maxString = voteKey;
+                maxx = voteNumber;
+            }
+        }
+        //2*((NodeList.size()+1)/3)+1
+        if (count >= 2 * ((NodeList.size()) / 3) + 1) {
+            Node nodekernal = NodeList.get(view % (NodeList.size()));
+            //因为onViewChangeAck的voteNumber>=2*((NodeList.size())/3，所以不需要自己给自己发
+            if (nodekernal.getNode() != this.node) {
+                Message messageSend = new Message();
+                messageSend.setOrgNode(node);
+                messageSend.setToNode(view % (NodeList.size()));
+                messageSend.setType(Constant.VIEWCHANGEACK);
+                messageSend.setTime(LocalDateTime.now());
+                messageSend.setNumber(msgNumber);
+                messageSend.setValue(maxString);
+                messageSend.setView(view);
+                //因为不经过sendAll了所以要判断一下
+                if (isGood) {
+                    sendUtil.sendNode(nodekernal.getIp(), nodekernal.getPort(), messageSend);
+                } else {
+                    messageSend.setValue("坏节点在view-change发送消息");
+//                    System.out.println("主节点在view-change-ack作恶，我们模拟就让它随便发了");
+                    sendUtil.sendNode(nodekernal.getIp(), nodekernal.getPort(), messageSend);
+                }
+                ;
+            }
+            defendVoteList.add("viewChange" + msgNumber);
+
+        }
+    }
 
 }
