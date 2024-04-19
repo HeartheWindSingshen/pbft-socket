@@ -24,6 +24,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 @Data
 public class ControllerCentre {
+    private Long sum=0L;
+    private Long countt=0L;
+    private Long minx=100000000000L;
     private int node;
     private int view;
     private String ip;
@@ -156,7 +159,14 @@ public class ControllerCentre {
                 System.out.println("传入的是坏节点的错误消息");
             }finally {
                 TestLongSend.endTime = System.nanoTime();
-                System.out.println("指挥塔发送主节点传送消息时长为：" + (TestLongSend.endTime - TestLongSend.startTime) / 1000000);
+                if ((TestLongSend.endTime - TestLongSend.startTime)/1000000<200){
+                    sum+=TestLongSend.endTime - TestLongSend.startTime;
+                    countt++;
+                    minx=(TestLongSend.endTime - TestLongSend.startTime)<minx?(TestLongSend.endTime - TestLongSend.startTime): minx;
+                    System.out.println("指挥塔发送主节点传送消息时长为：" + (TestLongSend.endTime - TestLongSend.startTime) / 1000000);
+                    System.out.println("平均通信时长为: "+(sum/countt)/1000000);
+                    System.out.println("最短通信时长为: "+minx/1000000);
+                }
             }
         }
 
@@ -197,6 +207,8 @@ public class ControllerCentre {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
     //停止搜索
@@ -221,6 +233,8 @@ public class ControllerCentre {
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
@@ -248,6 +262,8 @@ public class ControllerCentre {
         try {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
@@ -285,13 +301,15 @@ public class ControllerCentre {
                     //抛出异常会导致代码执行中断，从而导致定时任务终止
 //                    throw new RuntimeException(e);
                     e.printStackTrace();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         };
 
         // 定义任务执行的间隔时间（以毫秒为单位）
         long delay = 10; // 初始延迟，即第一次执行的延迟时间
-        long interval = 5000; // 间隔时间，每隔5秒执行一次
+        long interval = 2000; // 间隔时间，每隔5秒执行一次
 
         // 启动定时任务
         timer.scheduleAtFixedRate(task, delay, interval);
@@ -320,6 +338,8 @@ public class ControllerCentre {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
     //关闭无人机内部共享位置！！！
@@ -345,12 +365,14 @@ public class ControllerCentre {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
 
     }
 //
     public static void main(String[] args) throws FileNotFoundException {
-        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, false);
+        PbftNode pbftNode1 = new PbftNode(0, "127.0.0.1", 9001, true);
         pbftNode1.start();
         PbftNode pbftNode2 = new PbftNode(1, "127.0.0.1", 9002, true);
         pbftNode2.start();

@@ -41,6 +41,8 @@ public class timePositionTask {
                             sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         }
                     }
                 }
@@ -60,6 +62,8 @@ public class timePositionTask {
                         try {
                             sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
                         } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
                     }
@@ -81,6 +85,8 @@ public class timePositionTask {
                             sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         }
                     }
                 }
@@ -100,6 +106,8 @@ public class timePositionTask {
                         try {
                             sendUtil.sendNode("127.0.0.1",8888,messagetoTarget1);
                         } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
                     }

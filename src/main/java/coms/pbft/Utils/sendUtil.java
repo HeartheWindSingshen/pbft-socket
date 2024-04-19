@@ -11,7 +11,8 @@ import java.net.Socket;
 
 public class sendUtil {
     //这就是工具，阶段最好不要直接调用它，发送函数调用它
-    public static void sendNode(String ip, int port, Message messageSend) throws IOException {
+    public static void sendNode(String ip, int port, Message messageSend) throws IOException, InterruptedException {
+        Thread.sleep(5);
         Socket socket = new Socket(ip,port);
 
         String msg  = JSON.toJSONString(messageSend);

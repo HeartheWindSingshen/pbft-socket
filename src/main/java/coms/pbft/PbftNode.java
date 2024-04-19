@@ -103,6 +103,8 @@ public class PbftNode {
                             }
                         } catch (SocketException e) {
 //                            System.out.println("Client disconnected.");
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         } finally  {
                             clientSocket.close();
                         }
@@ -115,7 +117,7 @@ public class PbftNode {
         }).start();
     }
 
-    private void doAction(Message message) throws IOException {
+    private void doAction(Message message) throws IOException, InterruptedException {
         if(message!=null){
 
             switch(message.getType()){
@@ -224,7 +226,7 @@ public class PbftNode {
     }
 
 
-    private void onPrepare(Message message) throws IOException {
+    private void onPrepare(Message message) throws IOException, InterruptedException {
         //已经票数够了，发送了，所以不用操作了
         if(defendVoteList.contains("prepare"+message.getNumber())){
             int msgNumber = message.getNumber();
@@ -297,7 +299,7 @@ public class PbftNode {
     }
 
 
-    private void onCommit(Message message) throws IOException {
+    private void onCommit(Message message) throws IOException, InterruptedException {
         //已经票数够了，发送了，后面就不要操作了
         if(defendVoteList.contains("commit"+message.getNumber())){
             return;
@@ -446,10 +448,12 @@ public class PbftNode {
             sendUtil.sendNode(this.getNodeList().get(mainIndex).getIp(), this.getNodeList().get(mainIndex).getPort(), msgClient);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private void onNodeViewChange(Message message) throws IOException {
+    private void onNodeViewChange(Message message) throws IOException, InterruptedException {
         if(defendVoteList.contains("viewChange"+message.getNumber())){
             return;
         }
@@ -501,7 +505,7 @@ public class PbftNode {
         }
     }
 
-    private void onViewChangeAck(Message message) throws IOException {
+    private void onViewChangeAck(Message message) throws IOException, InterruptedException {
         if(defendVoteList.contains("viewChangeAck"+message.getNumber())){
             return;
         }
@@ -597,6 +601,8 @@ public class PbftNode {
                 // 捕获发送消息过程中可能抛出的异常
                 // 这里可以添加记录日志等操作
                 System.err.println("发送消息到节点 " + nodeElse.getNode() + " 时出现异常：" + e.getMessage());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
 
@@ -642,6 +648,8 @@ public class PbftNode {
                 // 捕获发送消息过程中可能抛出的异常
                 // 这里可以添加记录日志等操作
                 System.err.println("发送消息到节点 " + nodeElse.getNode() + " 时出现异常：" + e.getMessage());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
 
@@ -653,7 +661,7 @@ public class PbftNode {
      * @param type
      * @throws IOException
      */
-    private void replyClient(Message message,int type) throws IOException {
+    private void replyClient(Message message,int type) throws IOException, InterruptedException {
         if(message.getControllerType()==Constant.TIMEOPERATION5){
             Status status = new Status(this.x, this.y,100);
             String statusStirng = JSON.toJSONString(status);
@@ -871,6 +879,8 @@ public class PbftNode {
                     initiateViewChange();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             } else {
                 // 如果收到了消息，重置标志位
@@ -882,7 +892,7 @@ public class PbftNode {
         // 当收到主节点的消息时，设置标志位
         receivedMessage = true;
     }
-    public void initiateViewChange() throws IOException {
+    public void initiateViewChange() throws IOException, InterruptedException {
         // 发起view-change的逻辑
         System.out.println("开启定时的view-change");
         this.cancelChecking();
@@ -897,7 +907,7 @@ public class PbftNode {
             executor.shutdown(); // 关闭线程池
         }
     }
-    public void viewChangeStart() throws IOException {
+    public void viewChangeStart() throws IOException, InterruptedException {
         System.out.println("执行viewchangestart");
         this.view=this.view+1;
         Message message = new Message();
@@ -917,7 +927,7 @@ public class PbftNode {
         onNodeViewChangeLate(msgNumber,msgValue);
 
     }
-    private void onNodeViewChangeLate(int msgNumber,String msgValue) throws IOException {
+    private void onNodeViewChangeLate(int msgNumber,String msgValue) throws IOException, InterruptedException {
         if (defendVoteList.contains("viewChange" + msgNumber)) {
             return;
         }

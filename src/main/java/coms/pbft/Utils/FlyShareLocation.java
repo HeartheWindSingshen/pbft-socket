@@ -49,6 +49,8 @@ public class FlyShareLocation {
                     sendUtil.sendNode(pbftnode.getNodeList().get(mainIndex).getIp(), pbftnode.getNodeList().get(mainIndex).getPort(), msgClient);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         };
