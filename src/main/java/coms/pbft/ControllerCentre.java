@@ -159,7 +159,7 @@ public class ControllerCentre {
                 System.out.println("传入的是坏节点的错误消息");
             }finally {
                 TestLongSend.endTime = System.nanoTime();
-                if ((TestLongSend.endTime - TestLongSend.startTime)/1000000<200){
+                if ((TestLongSend.endTime - TestLongSend.startTime)/1000000<300){
                     sum+=TestLongSend.endTime - TestLongSend.startTime;
                     countt++;
                     minx=(TestLongSend.endTime - TestLongSend.startTime)<minx?(TestLongSend.endTime - TestLongSend.startTime): minx;

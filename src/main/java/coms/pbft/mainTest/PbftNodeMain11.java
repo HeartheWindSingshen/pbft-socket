@@ -4,9 +4,9 @@ import coms.pbft.PbftNode;
 
 import java.io.FileNotFoundException;
 
-public class PbftNodeMain2 {
+public class PbftNodeMain11 {
     public static void main(String[] args) throws FileNotFoundException {
-        PbftNode pbftNode3 = new PbftNode(2, "127.0.0.1", 9003, true);
-        pbftNode3.start();
+        PbftNode pbftNode12 = new PbftNode(11, "127.0.0.1", 9012, true);
+        pbftNode12.start();
     }
 }

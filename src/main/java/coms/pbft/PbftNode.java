@@ -886,7 +886,7 @@ public class PbftNode {
                 // 如果收到了消息，重置标志位
                 receivedMessage = false;
             }
-        }, 10, 5, TimeUnit.SECONDS); // 每秒钟执行一次检查
+        }, 75, 5, TimeUnit.SECONDS); // 每秒钟执行一次检查
     }
     public void receiveMessage() {
         // 当收到主节点的消息时，设置标志位
