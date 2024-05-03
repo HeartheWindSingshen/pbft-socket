@@ -1,0 +1,25 @@
+@echo off
+
+
+REM 设置需要运行的 Java 包的路径和参数
+set PACKAGE0_PATH=C:\Users\AAA\Desktop\pbft-socket-web-run\0stmerge-0.0.1-SNAPSHOT
+set PACKAGE1_PATH=C:\Users\AAA\Desktop\pbft-socket-web-run\1stmerge-0.0.1-SNAPSHOT
+set PACKAGE2_PATH=C:\Users\AAA\Desktop\pbft-socket-web-run\2stmerge-0.0.1-SNAPSHOT
+set PACKAGE3_PATH=C:\Users\AAA\Desktop\pbft-socket-web-run\3stmerge-0.0.1-SNAPSHOT
+REM 运行第一个 Java 包
+echo Running Package 0...
+java -jar %PACKAGE0_PATH%
+
+REM 运行第二个 Java 包
+echo Running Package 1...
+java -jar %PACKAGE1_PATH%
+
+REM 运行第三个 Java 包
+echo Running Package 2...
+java -jar %PACKAGE2_PATH%
+
+REM 运行第四个 Java 包
+echo Running Package 3...
+java -jar %PACKAGE3_PATH%
+
+pause
