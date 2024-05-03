@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机控制面板</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: white;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(10, 40px); /* 每个节点 40px 宽 */
+            grid-template-rows: repeat(10, 40px); /* 每个节点 40px 高 */
+            gap: 1px; /* 节点之间的间隔 */
+        }
+
+        .grid-node {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border: 1px solid black;
+        }
+
+        .node {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin-top: -10px;
+            margin-left: -10px;
+            background-color: blue; /* 节点颜色 */
+            border-radius: 50%;
+            color: white;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="grid-container" id="grid-container"></div>
+
+<!--因为执行搜寻特定区域需要加定时改变位置，但是原来业务代码也没写，加的话可能会造成bug所以说，就不加这个功能了-->
+<!--<button onclick="executeSearch()">执行搜寻特定区域</button>-->
+<!--<input id="x1" type="text" placeholder="x1">-->
+<!--<input id="y1" type="text" placeholder="y1">-->
+<!--<input id="lx" type="text" placeholder="lx">-->
+<!--<input id="ly" type="text" placeholder="ly">-->
+<!--<input id="rx" type="text" placeholder="rx">-->
+<!--<input id="ry" type="text" placeholder="ry">-->
+<!--<br>-->
+<!--<br>-->
+
+<button onclick="moveToPosition()">移动特定位置</button>
+<input id="x1_move" type="text" placeholder="x1">
+<input id="y1_move" type="text" placeholder="y1">
+<br>
+<br>
+<button onclick="startSearch()">开始搜索</button>
+<input id="lx_search" type="text" placeholder="lx">
+<input id="ly_search" type="text" placeholder="ly">
+<input id="rx_search" type="text" placeholder="rx">
+<input id="ry_search" type="text" placeholder="ry">
+<br>
+<br>
+<button onclick="stopSearch()">停止搜索</button>
+<br>
+<button onclick="startSharing()">开始无人机内部共享位置</button>
+<br>
+<button onclick="stopSharing()">关闭无人机共享位置</button>
+<br>
+
+<script>
+    const colors = ['blue', 'green', 'red', 'purple', 'yellow', 'orange', 'pink', 'cyan', 'magenta', 'lime'];
+
+    const gridContainer = document.getElementById('grid-container');
+
+    function fetchNodeCoordinates() {
+        fetch('/get-node-coordinates') // 发送 GET 请求到后端获取节点坐标的数据
+            .then(response => response.json())
+            .then(data => {
+                // 清除所有节点颜色
+                gridContainer.childNodes.forEach(node => node.innerHTML = '');
+
+                // 根据后端返回的数据动态生成节点
+                data.forEach(nodeData => {
+                    const nodeElement = gridContainer.childNodes[(9 - nodeData.x) * 10 + nodeData.y];
+                    const circleElement = document.createElement('div');
+                    circleElement.className = 'node';
+                    circleElement.textContent = nodeData.node; // 设置节点编号
+                    circleElement.style.backgroundColor = colors[nodeData.node % colors.length]; // 设置节点颜色
+                    nodeElement.appendChild(circleElement);
+                });
+            })
+            .catch(error => console.error('Error fetching node coordinates:', error));
+    }
+
+    // 每隔5秒更新一次节点坐标信息
+    setInterval(fetchNodeCoordinates, 2000);
+
+    // 页面加载时立即获取一次节点坐标信息
+    fetchNodeCoordinates();
+
+    // 创建网格地图
+    function createGridMap() {
+        for (let i = 0; i < 100; i++) { // 100 个节点，10行10列
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'grid-node';
+            gridContainer.appendChild(nodeElement);
+        }
+    }
+
+    createGridMap(); // 创建网格地图
+</script>
+<script>
+    async function executeSearch() {
+        const x1 = document.getElementById('x1').value;
+        const y1 = document.getElementById('y1').value;
+        const lx = document.getElementById('lx').value;
+        const ly = document.getElementById('ly').value;
+        const rx = document.getElementById('rx').value;
+        const ry = document.getElementById('ry').value;
+        const response = await fetch(`/executeSearch?x1=${x1}&y1=${y1}&lx=${lx}&ly=${ly}&rx=${rx}&ry=${ry}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('执行搜寻特定区域成功');
+        } else {
+            alert('执行搜寻特定区域失败');
+        }
+    }
+    async function moveToPosition() {
+        const x1 = document.getElementById('x1_move').value;
+        const y1 = document.getElementById('y1_move').value;
+        const response = await fetch(`/moveToPosition?x1=${x1}&y1=${y1}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('移动特定位置成功');
+        } else {
+            alert('移动特定位置失败');
+        }
+    }
+    async function startSearch() {
+        const lx = document.getElementById('lx_search').value;
+        const ly = document.getElementById('ly_search').value;
+        const rx = document.getElementById('rx_search').value;
+        const ry = document.getElementById('ry_search').value;
+        const response = await fetch(`/startSearch?lx=${lx}&ly=${ly}&rx=${rx}&ry=${ry}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('开始搜索成功');
+        } else {
+            alert('开始搜索失败');
+        }
+    }
+    async function stopSearch() {
+        const response = await fetch(`/stopSearch`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('停止搜索成功');
+        } else {
+            alert('停止搜索失败');
+        }
+    }
+    async function startSharing() {
+        const response = await fetch(`/startSharing`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('开始无人机内部共享位置成功');
+        } else {
+            alert('开始无人机内部共享位置失败');
+        }
+    }
+    async function stopSharing() {
+        const response = await fetch(`/stopSharing`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        console.log(data);
+        if (data) {
+            alert('关闭无人机共享位置成功');
+        } else {
+            alert('关闭无人机共享位置失败');
+        }
+    }
+</script>
+</body>
+</html>
+
+
+
+
+
+<!--&lt;!&ndash;这是属于集群节点的前端页面&ndash;&gt;-->
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>无人机节点面板</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--            margin: 0;-->
+<!--            padding: 0;-->
+<!--            font-family: Arial, sans-serif;-->
+<!--            background-color: white;-->
+<!--        }-->
+
+<!--        .grid-container {-->
+<!--            display: grid;-->
+<!--            grid-template-columns: repeat(10, 40px); /* 每个节点 40px 宽 */-->
+<!--            grid-template-rows: repeat(10, 40px); /* 每个节点 40px 高 */-->
+<!--            gap: 1px; /* 节点之间的间隔 */-->
+<!--        }-->
+
+<!--        .grid-node {-->
+<!--            position: relative;-->
+<!--            width: 100%;-->
+<!--            height: 100%;-->
+<!--            border: 1px solid black;-->
+<!--        }-->
+
+<!--        .node {-->
+<!--            position: absolute;-->
+<!--            top: 50%;-->
+<!--            left: 50%;-->
+<!--            width: 20px;-->
+<!--            height: 20px;-->
+<!--            margin-top: -10px;-->
+<!--            margin-left: -10px;-->
+<!--            background-color: blue; /* 节点颜色 */-->
+<!--            border-radius: 50%;-->
+<!--            color: white;-->
+<!--            text-align: center;-->
+<!--            line-height: 20px;-->
+<!--            font-size: 12px;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<div class="grid-container" id="grid-container"></div>-->
+<!--<script>-->
+<!--    const colors = ['blue', 'green', 'red', 'purple', 'yellow', 'orange', 'pink', 'cyan', 'magenta', 'lime'];-->
+
+<!--    const gridContainer = document.getElementById('grid-container');-->
+
+<!--    function fetchNodeCoordinates() {-->
+<!--        fetch('/get-sharenode') // 发送 GET 请求到后端获取节点坐标的数据-->
+<!--            .then(response => response.json())-->
+<!--            .then(data => {-->
+<!--                // 清除所有节点颜色-->
+<!--                gridContainer.childNodes.forEach(node => node.innerHTML = '');-->
+
+<!--                // 根据后端返回的数据动态生成节点-->
+<!--                data.forEach(nodeData => {-->
+<!--                    const nodeElement = gridContainer.childNodes[(9 - nodeData.x) * 10 + nodeData.y];-->
+<!--                    const circleElement = document.createElement('div');-->
+<!--                    circleElement.className = 'node';-->
+<!--                    circleElement.textContent = nodeData.node; // 设置节点编号-->
+<!--                    circleElement.style.backgroundColor = colors[nodeData.node % colors.length]; // 设置节点颜色-->
+<!--                    nodeElement.appendChild(circleElement);-->
+<!--                });-->
+<!--            })-->
+<!--            .catch(error => console.error('Error fetching node coordinates:', error));-->
+<!--    }-->
+
+<!--    // 每隔5秒更新一次节点坐标信息-->
+<!--    setInterval(fetchNodeCoordinates, 2000);-->
+
+<!--    // 页面加载时立即获取一次节点坐标信息-->
+<!--    fetchNodeCoordinates();-->
+
+<!--    // 创建网格地图-->
+<!--    function createGridMap() {-->
+<!--        for (let i = 0; i < 100; i++) { // 100 个节点，10行10列-->
+<!--            const nodeElement = document.createElement('div');-->
+<!--            nodeElement.className = 'grid-node';-->
+<!--            gridContainer.appendChild(nodeElement);-->
+<!--        }-->
+<!--    }-->
+
+<!--    createGridMap(); // 创建网格地图-->
+<!--</script>-->
+
+<!--</body>-->
+<!--</html>-->
+
+
+
+
+
